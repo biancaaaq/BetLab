@@ -1,0 +1,64 @@
+@model List<BetLab.EthicalWeb.Models.AdminCasinoGameViewModel>
+@{
+    ViewData["Title"] = "Admin — Casino";
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">🎰 Gestionare casino</h1>
+        <p class="eth-page-subtitle">Activează sau dezactivează jocurile disponibile</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+
+<div class="eth-panel">
+    <div class="eth-panel-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr style="font-size:0.8rem;text-transform:uppercase;color:#6b7280;letter-spacing:.04em;">
+                        <th class="px-4 py-3">Joc</th>
+                        <th class="px-3 py-3">Tip</th>
+                        <th class="px-3 py-3">RTP</th>
+                        <th class="px-3 py-3">Volatilitate</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3 text-end">Acțiune</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in Model)
+                    {
+                        <tr>
+                            <td class="px-4 py-3 fw-semibold">@g.Name</td>
+                            <td class="px-3 py-3"><span class="badge bg-secondary">@g.Type</span></td>
+                            <td class="px-3 py-3 text-success fw-bold">@g.RtpPercent.ToString("F2")%</td>
+                            <td class="px-3 py-3 text-muted small">@g.Volatility</td>
+                            <td class="px-3 py-3">
+                                @if (g.IsActive)
+                                { <span class="badge bg-success">Activ</span> }
+                                else
+                                { <span class="badge bg-danger">Inactiv</span> }
+                            </td>
+                            <td class="px-3 py-3 text-end">
+                                <form asp-action="ToggleGame" method="post" class="d-inline">
+                                    <input type="hidden" name="gameId" value="@g.Id" />
+                                    <button class="btn btn-sm @(g.IsActive ? "btn-outline-danger" : "btn-outline-success")">
+                                        @(g.IsActive ? "Dezactivează" : "Activează")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3" style="font-size:0.82rem;">
+    <strong>Notă:</strong> Dezactivarea unui joc îl ascunde din lista de casino pentru utilizatori.
+    Rundele existente nu sunt afectate.
+</div>

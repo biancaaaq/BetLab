@@ -1,0 +1,82 @@
+﻿@{
+    ViewData["Title"] = "Confidențialitate";
+}
+
+<div class="ethical-hero" style="padding: 2rem 2.5rem;">
+    <div class="ethical-badge">
+        <i data-lucide="shield"></i>
+        <span>Confidențialitate</span>
+    </div>
+    <h1 class="ethical-hero-title" style="font-size: 2rem;">Datele tale, în control.</h1>
+    <p class="ethical-hero-subtitle" style="margin-bottom: 0;">
+        Respectăm intimitatea utilizatorilor noștri. Pe această pagină găsești pe scurt
+        ce informații colectăm și cum le folosim pentru a-ți oferi o experiență sigură.
+    </p>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-3">
+                <i data-lucide="user-check"></i>
+                <span>Date de cont</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Stocăm numele de utilizator și emailul folosite la înregistrare.
+                Parola este criptată și nu poate fi recuperată în clar.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-3">
+                <i data-lucide="lock"></i>
+                <span>Securitate</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Conexiunea este criptată prin HTTPS. Datele sunt găzduite local,
+                fără transfer către terți.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-3">
+                <i data-lucide="cookie"></i>
+                <span>Cookie-uri</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Folosim doar cookie-uri tehnice strict necesare pentru autentificare
+                și menținerea sesiunii. Nu folosim cookie-uri de tracking sau de marketing.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-3">
+                <i data-lucide="scale"></i>
+                <span>Drepturile tale</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Poți cere oricând accesul la datele tale, modificarea sau ștergerea contului.
+                Trimite-ne un email și răspundem în cel mai scurt timp.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-warning mt-4">
+    <i data-lucide="alert-triangle"></i>
+    <div>
+        <strong>Joacă responsabil.</strong>
+        Pariurile pot crea dependență. Folosește limitele de cheltuială și de timp din profilul tău
+        sau apelează gratuit la <strong>Telverde 0800 800 099</strong> dacă jocul îți afectează viața.
+    </div>
+</div>
+
+<p class="text-muted-eth text-center mt-4" style="font-size: 0.85rem;">
+    Ultima actualizare: @DateTime.UtcNow.ToString("MMMM yyyy", new System.Globalization.CultureInfo("ro-RO"))
+</p>

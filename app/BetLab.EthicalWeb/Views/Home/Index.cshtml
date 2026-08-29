@@ -1,0 +1,163 @@
+﻿@{
+    ViewData["Title"] = "Acasă";
+    var hasToken = !string.IsNullOrWhiteSpace(Context.Session.GetString("Ethical_JwtToken"));
+}
+
+<div class="ethical-hero">
+    <div class="ethical-badge">
+        <i data-lucide="shield-check"></i>
+        <span>Pariuri sportive &amp; cazinou online</span>
+    </div>
+
+    <h1 class="ethical-hero-title">Pariază informat, joacă în siguranță.</h1>
+
+    <p class="ethical-hero-subtitle">
+        Cote competitive la meciurile zilei, jocuri de cazinou variate și instrumente reale
+        de control al jocului. Tu decizi ritmul, noi îți oferim claritatea.
+    </p>
+
+    @if (hasToken && ViewBag.Balance != null)
+    {
+        var net = (decimal)(ViewBag.TodayNet ?? 0m);
+        var staked = (decimal)(ViewBag.TodayStaked ?? 0m);
+        var netColor = net >= 0 ? "#16A34A" : "var(--danger,#DC2626)";
+        var netSign  = net >= 0 ? "+" : "";
+        <div class="ethical-panel mb-4" style="border-left:4px solid var(--primary,#2563EB);">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+                <i data-lucide="bar-chart-2" style="width:16px;height:16px;color:var(--primary,#2563EB);"></i>
+                <span style="font-weight:700;font-size:0.9rem;">Activitatea ta de azi</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;text-align:center;">
+                <div>
+                    <div style="font-size:1.25rem;font-weight:800;">@(((decimal)ViewBag.Balance!).ToString("F2")) RON</div>
+                    <div class="ethical-muted" style="font-size:0.75rem;">Sold curent</div>
+                </div>
+                <div>
+                    <div style="font-size:1.25rem;font-weight:800;">@staked.ToString("F2") RON</div>
+                    <div class="ethical-muted" style="font-size:0.75rem;">Pariat azi</div>
+                </div>
+                <div>
+                    <div style="font-size:1.25rem;font-weight:800;color:@netColor;">@netSign@net.ToString("F2") RON</div>
+                    <div class="ethical-muted" style="font-size:0.75rem;">Net sesiune</div>
+                </div>
+            </div>
+            <div style="margin-top:0.75rem;text-align:right;">
+                <a asp-controller="Activity" asp-action="Index" class="ethical-muted" style="font-size:0.8rem;">
+                    <i data-lucide="external-link" style="width:12px;height:12px;vertical-align:middle;"></i>
+                    Vezi istoricul complet
+                </a>
+            </div>
+        </div>
+    }
+
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        @if (hasToken)
+        {
+            <a asp-controller="Events" asp-action="Index" class="btn btn-primary">
+                <i data-lucide="trophy"></i>
+                <span>Vezi meciurile</span>
+            </a>
+            <a asp-controller="Casino" asp-action="Index" class="btn btn-outline-primary">
+                <i data-lucide="dices"></i>
+                <span>Cazino</span>
+            </a>
+            <a asp-controller="Account" asp-action="Profile" class="btn btn-outline-secondary">
+                <i data-lucide="sliders-horizontal"></i>
+                <span>Limite &amp; control</span>
+            </a>
+        }
+        else
+        {
+            <a asp-controller="Account" asp-action="Register" class="btn btn-primary">
+                <i data-lucide="user-plus"></i>
+                <span>Creează cont</span>
+            </a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn-outline-primary">
+                <i data-lucide="log-in"></i>
+                <span>Am deja cont</span>
+            </a>
+        }
+    </div>
+</div>
+
+<h2 class="mb-3" style="font-size: 1.4rem;">De ce BetLab</h2>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-2">
+                <i data-lucide="eye"></i>
+                <span>Vezi exact ce pariezi</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Pentru fiecare pariu vezi cota, probabilitatea implicită de câștig
+                și câștigul potențial — cu confirmare înainte de plasare. Pentru fiecare joc de cazinou vezi RTP-ul.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-2">
+                <i data-lucide="sliders-horizontal"></i>
+                <span>Tu ești la volan</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Setezi limite de depunere, pierdere și timp direct din profil.
+                Reduci limita imediat; creșterea se aplică după 24 de ore.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-2">
+                <i data-lucide="clock"></i>
+                <span>Pauze de gândire</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                La fiecare 30 de minute îți afișăm timpul jucat și balanța sesiunii.
+                Tu alegi: continui, faci pauză sau încheiezi.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-2">
+                <i data-lucide="calculator"></i>
+                <span>RTP afișat pe fiecare joc</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Fiecare joc de cazinou afișează procentul de returnare către jucător (RTP),
+                astfel știi exact ce șanse ai înainte să începi.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-2">
+                <i data-lucide="shield-off"></i>
+                <span>Auto-excludere rapidă</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Te poți opri pentru 24 de ore, 7 zile, 30 de zile sau permanent
+                cu un singur click din profil. Fără explicații, fără apeluri.
+            </p>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-title mb-2">
+                <i data-lucide="headphones"></i>
+                <span>Suport, oricând</span>
+            </div>
+            <p class="ethical-muted mb-0">
+                Dacă jocul îți afectează viața, poți apela gratuit
+                <strong>Telverde 0800 800 099</strong> (Promis — Asociația Joc Responsabil).
+            </p>
+        </div>
+    </div>
+</div>

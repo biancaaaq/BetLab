@@ -1,0 +1,457 @@
+@{
+    var currentUserNameRaw = Context.Session.GetString("Dark_CurrentUserName") ?? "";
+    var currentUserName = currentUserNameRaw.Contains('@') ? currentUserNameRaw.Split('@')[0] : currentUserNameRaw;
+    var hasToken = !string.IsNullOrWhiteSpace(Context.Session.GetString("Dark_JwtToken"));
+    var isAdmin  = Context.Session.GetString("Dark_IsAdmin") == "true";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+
+    string NavActive(string controller) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — BetLab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dark-theme.css" asp-append-version="true" />
+</head>
+<body>
+
+<header>
+    <nav class="dark-navbar">
+        <div class="container">
+            <a class="dark-brand" asp-controller="Home" asp-action="Index">
+                <div class="dark-brand-icon" style="font-size:1.1rem;font-weight:900;font-style:normal;">B</div>
+                <span>BetLab</span>
+            </a>
+
+            <ul class="dark-nav">
+                <li>
+                    <a class="dark-nav-link @NavActive("Home")" asp-controller="Home" asp-action="Index">
+                        🏠 Acasă
+                    </a>
+                </li>
+                <li>
+                    <a class="dark-nav-link @NavActive("Events")" asp-controller="Events" asp-action="Index">
+                        🔥 Meciuri
+                    </a>
+                </li>
+                <li>
+                    <a class="dark-nav-link @NavActive("BetSlip")" asp-controller="BetSlip" asp-action="Index">
+                        🎫 Bilet
+                    </a>
+                </li>
+                <li>
+                    <a class="dark-nav-link @NavActive("Casino")" asp-controller="Casino" asp-action="Index">
+                        🎰 Casino
+                    </a>
+                </li>
+                <li>
+                    <a class="dark-nav-link @NavActive("Promotions")" asp-controller="Promotions" asp-action="Index">
+                        🎁 Promoții
+                    </a>
+                </li>
+                @if (hasToken)
+                {
+                    <li>
+                        <a class="dark-nav-link @NavActive("MyBets")" asp-controller="MyBets" asp-action="Index">
+                            🎯 Bilete
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dark-nav-link @NavActive("Activity")" asp-controller="Activity" asp-action="Index">
+                            📊 Activitate
+                        </a>
+                    </li>
+                    @if (isAdmin)
+                    {
+                        <li>
+                            <a class="dark-nav-link @NavActive("Admin")"
+                               asp-controller="Admin" asp-action="Index"
+                               style="color:#fbbf24;font-weight:700;">
+                                🛡️ Admin
+                            </a>
+                        </li>
+                    }
+                }
+            </ul>
+
+            <div class="dark-nav-right">
+                @if (hasToken)
+                {
+                    @await Component.InvokeAsync("DarkBalance")
+
+                    <a class="btn-dark-gold btn-dark-primary" asp-controller="Account" asp-action="Deposit"
+                       style="padding:0.4rem 1rem;font-size:0.82rem;font-weight:700;">
+                        + DEPUNE
+                    </a>
+
+                    <a class="dark-user-btn" asp-controller="Account" asp-action="Profile">
+                        👤 @currentUserName
+                    </a>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        <button type="submit" class="dark-logout-btn">Ieșire</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="dark-user-btn" asp-controller="Account" asp-action="Login">Autentificare</a>
+                    <a class="dark-cta-btn" asp-controller="Account" asp-action="Register">CONT NOU</a>
+                }
+            </div>
+
+            <!-- Hamburger — vizibil doar pe mobile -->
+            <button class="dark-nav-toggle" id="darkNavToggle" aria-label="Meniu" aria-expanded="false">
+                <span class="dark-hamburger-icon">
+                    <span></span><span></span><span></span>
+                </span>
+            </button>
+        </div>
+
+        <!-- Mobile drawer -->
+        <div class="dark-mobile-menu" id="darkMobileMenu">
+            <a class="dark-mobile-nav-link @NavActive("Home")" asp-controller="Home" asp-action="Index">🏠 Acasă</a>
+            <a class="dark-mobile-nav-link @NavActive("Events")" asp-controller="Events" asp-action="Index">🔥 Meciuri</a>
+            <a class="dark-mobile-nav-link @NavActive("BetSlip")" asp-controller="BetSlip" asp-action="Index">🎫 Bilet</a>
+            <a class="dark-mobile-nav-link @NavActive("Casino")" asp-controller="Casino" asp-action="Index">🎰 Casino</a>
+            <a class="dark-mobile-nav-link @NavActive("Promotions")" asp-controller="Promotions" asp-action="Index">🎁 Promoții</a>
+            @if (hasToken)
+            {
+                <a class="dark-mobile-nav-link @NavActive("MyBets")" asp-controller="MyBets" asp-action="Index">🎯 Bilete</a>
+                <a class="dark-mobile-nav-link @NavActive("Activity")" asp-controller="Activity" asp-action="Index">📊 Activitate</a>
+                @if (isAdmin)
+                {
+                    <a class="dark-mobile-nav-link @NavActive("Admin")" asp-controller="Admin" asp-action="Index"
+                       style="color:#fbbf24;">🛡️ Admin</a>
+                }
+                <div class="dark-mobile-divider"></div>
+                <div class="dark-mobile-auth-row">
+                    <a asp-controller="Account" asp-action="Deposit"
+                       style="background:linear-gradient(135deg,#065F46,#0D1A0D);border:1px solid #065F46;
+                              color:white;border-radius:6px;padding:0.4rem 0.85rem;
+                              font-size:0.82rem;font-weight:700;text-decoration:none;">
+                        + DEPUNE
+                    </a>
+                    <a asp-controller="Account" asp-action="Profile"
+                       style="color:#D1D5DB;font-size:0.85rem;font-weight:600;text-decoration:none;">
+                        👤 @currentUserName
+                    </a>
+                    <form asp-controller="Account" asp-action="Logout" method="post" style="margin-left:auto;">
+                        <button type="submit" class="dark-logout-btn">Ieșire</button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="dark-mobile-divider"></div>
+                <div class="dark-mobile-auth-row">
+                    <a asp-controller="Account" asp-action="Login" class="dark-user-btn">Autentificare</a>
+                    <a asp-controller="Account" asp-action="Register" class="dark-cta-btn">CONT NOU</a>
+                </div>
+            }
+        </div>
+    </nav>
+</header>
+
+@if (ViewData["FullScreen"] is true)
+{
+    @RenderBody()
+}
+else
+{
+    <div class="dark-page">
+        <div class="container">
+            @RenderBody()
+        </div>
+    </div>
+}
+
+@if (ViewData["FullScreen"] is not true)
+{
+    <footer class="dark-footer">
+        <div class="container" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>© 2026 BetLab · Toate drepturile rezervate</span>
+            <span>18+ · Joc responsabil</span>
+        </div>
+    </footer>
+}
+
+<!-- Fake win toast -->
+<div id="win-toast" class="dark-win-toast" style="display:none;" onclick="this.style.display='none'">
+    <div class="dark-win-toast__title">🏆 Câștig recent</div>
+    <div class="dark-win-toast__amount" id="toast-amount"></div>
+    <div class="dark-win-toast__user" id="toast-user"></div>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+if (window.lucide) { lucide.createIcons(); }
+
+// Fake live counter — fluctuează între 800-1200
+(function () {
+    var base = 847;
+    setInterval(function () {
+        base += Math.floor(Math.random() * 11) - 4;
+        if (base < 800) base = 812;
+        if (base > 1200) base = 1180;
+        var el = document.getElementById('live-count');
+        if (el) el.textContent = base;
+    }, 3500);
+})();
+
+// Fake win toasts
+(function () {
+    var names  = ['Andrei M.','Mihai P.','Elena D.','Radu C.','Ana S.','George B.','Ioana T.','Vlad N.'];
+    var amounts = ['247 RON','1.420 RON','89 RON','3.200 RON','560 RON','175 RON','4.800 RON','320 RON'];
+
+    function showToast() {
+        var name   = names[Math.floor(Math.random() * names.length)];
+        var amount = amounts[Math.floor(Math.random() * amounts.length)];
+        var toast  = document.getElementById('win-toast');
+        document.getElementById('toast-amount').textContent = '+' + amount;
+        document.getElementById('toast-user').textContent   = name + ' tocmai a câștigat!';
+        toast.style.display = 'block';
+        setTimeout(function () { toast.style.display = 'none'; }, 4000);
+    }
+
+    // Primul toast după 8 secunde, apoi la intervale aleatorii
+    setTimeout(function loop() {
+        showToast();
+        setTimeout(loop, 12000 + Math.random() * 18000);
+    }, 8000);
+})();
+
+// Mobile nav toggle
+(function () {
+    var toggle = document.getElementById('darkNavToggle');
+    var menu   = document.getElementById('darkMobileMenu');
+    if (!toggle || !menu) return;
+    toggle.addEventListener('click', function () {
+        var open = menu.classList.toggle('open');
+        toggle.classList.toggle('open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    menu.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () {
+            menu.classList.remove('open');
+            toggle.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        });
+    });
+})();
+
+// Helper logging
+window.darkLog = function (eventType, pageName, opts) {
+    var payload = Object.assign({ eventType: eventType, pageName: pageName }, opts || {});
+    fetch('/logging/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+    }).then(function (r) {
+        if (!r.ok) console.warn('[darkLog] failed:', eventType, r.status);
+    }).catch(function (e) {
+        console.error('[darkLog] error:', eventType, e);
+    });
+};
+</script>
+@await RenderSectionAsync("Scripts", required: false)
+
+@if (hasToken)
+{
+    <!-- ═══════════════════════════════════════════════════════════════
+         Dark pattern pop-ups — apar random la 4-7 min după pageload.
+         Mesaje fabricate (FOMO, scarcity, social proof, urgency).
+         Toate loghează impression și click pentru analiza tezei.
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <div id="darkPopupOverlay" class="dark-popup-overlay" style="display:none;">
+        <div class="dark-popup-box">
+            <button class="dark-popup-close" onclick="dismissDarkPopup()" title="Închide">×</button>
+            <div class="dark-popup-icon" id="darkPopupIcon">🎁</div>
+            <div class="dark-popup-title" id="darkPopupTitle">Titlu</div>
+            <div class="dark-popup-text" id="darkPopupText">Text</div>
+            <div class="dark-popup-timer" id="darkPopupTimer"></div>
+            <a id="darkPopupCta" href="#" class="dark-popup-cta">Profită acum →</a>
+        </div>
+    </div>
+
+    <style>
+        .dark-popup-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(4px);
+            z-index: 9998;
+            align-items: center; justify-content: center;
+            animation: dpFadeIn 0.25s ease-out;
+        }
+        .dark-popup-overlay.show { display: flex !important; }
+        @@keyframes dpFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .dark-popup-box {
+            background: linear-gradient(135deg, #1a1a1a, #0f0f0f);
+            border: 2px solid #DC2626;
+            box-shadow: 0 0 40px rgba(220,38,38,0.4), 0 20px 60px rgba(0,0,0,0.5);
+            border-radius: 16px;
+            padding: 2rem 1.75rem 1.75rem;
+            max-width: 380px; width: 92%;
+            text-align: center;
+            position: relative;
+            animation: dpScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @@keyframes dpScaleIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .dark-popup-close {
+            position: absolute; top: 0.5rem; right: 0.7rem;
+            background: transparent; border: none; color: #6B7280;
+            font-size: 1.6rem; line-height: 1; cursor: pointer;
+            padding: 0.3rem 0.6rem; border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .dark-popup-close:hover { color: #fff; }
+
+        .dark-popup-icon {
+            font-size: 3.5rem; line-height: 1; margin-bottom: 0.6rem;
+            animation: dpBounce 1.4s ease-in-out infinite;
+        }
+        @@keyframes dpBounce {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-8px); }
+        }
+
+        .dark-popup-title {
+            font-size: 1.3rem; font-weight: 900; color: #FCD34D;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            margin-bottom: 0.6rem;
+        }
+        .dark-popup-text {
+            font-size: 0.95rem; color: #E5E7EB; line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+        .dark-popup-timer {
+            font-size: 0.85rem; font-weight: 700; color: #EF4444;
+            margin-bottom: 1rem;
+            min-height: 1.2rem;
+        }
+        .dark-popup-cta {
+            display: block;
+            background: linear-gradient(135deg, #DC2626, #991B1B);
+            color: white !important;
+            font-weight: 800; font-size: 1rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            padding: 0.85rem 1rem;
+            border-radius: 10px;
+            text-decoration: none;
+            box-shadow: 0 0 20px rgba(220,38,38,0.5);
+            animation: dpPulse 1.8s ease-in-out infinite;
+            transition: transform 0.15s;
+        }
+        .dark-popup-cta:hover { transform: scale(1.04); color: white; }
+        @@keyframes dpPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(220,38,38,0.5); }
+            50%      { box-shadow: 0 0 30px rgba(220,38,38,0.9); }
+        }
+    </style>
+
+    <script>
+    (function () {
+        // Pool de 8 pop-up-uri dark pattern
+        var POPUPS = [
+            { id: 'bonus_expiry',  icon: '🎁', title: 'Bonus expiră!',           text: 'Bonusul tău 200% expiră în curând. Depune acum ca să-l prinzi!', cta: 'Depune acum', url: '/Account/Deposit', timer: 600 },
+            { id: 'blackjack_seats', icon: '🃏', title: 'Doar 3 locuri rămase!', text: 'Masa Premium Blackjack se umple rapid. Ultimele 3 locuri disponibile!', cta: 'Joacă acum', url: '/Blackjack',         timer: 0 },
+            { id: 'odds_rising',   icon: '📈', title: 'Cotă în creștere!',       text: 'Cota pentru Liverpool a urcat ACUM la 2.85. Prinde-o până nu scade!',  cta: 'Vezi cota',    url: '/Events',           timer: 180 },
+            { id: 'hot_slot',      icon: '🔥', title: 'Diamond Reels e HOT!',    text: '8 jucători au câștigat în ultimele 10 spinuri. Rotește și tu acum!',  cta: 'Rotesc acum',  url: '/Casino',           timer: 0 },
+            { id: 'vip_close',     icon: '⭐', title: 'Aproape VIP Silver!',     text: 'Ești la 50 RON distanță de statusul VIP Silver. Continuă să pariezi!', cta: 'Continuă',     url: '/Events',           timer: 0 },
+            { id: 'other_win',     icon: '💰', title: 'Cătălin G. a câștigat!',  text: 'Tocmai a câștigat 4.250 RON la Diamond Reels. Și tu poți la fel!',    cta: 'Joacă',        url: '/Casino',           timer: 0 },
+            { id: 'free_spins',    icon: '🎰', title: '50 free spins activate!', text: 'Ai primit 50 rotiri gratuite! Folosește-le în următoarele 10 minute.', cta: 'Folosește',  url: '/Casino',           timer: 600 },
+            { id: 'cashback',      icon: '💸', title: '25% cashback azi!',       text: 'Recuperezi 25% din ultima pierdere ca bonus. Activeaz-o până seara!', cta: 'Activează',   url: '/Account/Deposit',   timer: 0 }
+        ];
+
+        var LAST_KEY    = 'dark_popup_last_id';
+        var FIRST_DELAY = 4 * 60 * 1000;   // primul pop-up după 4 min
+        var MIN_DELAY   = 4 * 60 * 1000;   // 4 min
+        var MAX_DELAY   = 7 * 60 * 1000;   // 7 min
+        var currentTimerInterval = null;
+
+        function pickRandomPopup() {
+            var lastId = sessionStorage.getItem(LAST_KEY);
+            var candidates = POPUPS.filter(function (p) { return p.id !== lastId; });
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        function showPopup(p) {
+            sessionStorage.setItem(LAST_KEY, p.id);
+            document.getElementById('darkPopupIcon').textContent  = p.icon;
+            document.getElementById('darkPopupTitle').textContent = p.title;
+            document.getElementById('darkPopupText').textContent  = p.text;
+            var cta = document.getElementById('darkPopupCta');
+            cta.textContent = p.cta + ' →';
+            cta.href = p.url;
+            cta.onclick = function () { logPopupEvent(p.id, 'PopupClicked', p.url); };
+
+            // Timer countdown dacă există
+            var timerEl = document.getElementById('darkPopupTimer');
+            if (currentTimerInterval) { clearInterval(currentTimerInterval); currentTimerInterval = null; }
+            if (p.timer > 0) {
+                var remaining = p.timer;
+                var fmt = function (s) {
+                    var m = Math.floor(s / 60), ss = s % 60;
+                    return '⏱ ' + m + ':' + (ss < 10 ? '0' + ss : ss) + ' până expiră!';
+                };
+                timerEl.textContent = fmt(remaining);
+                currentTimerInterval = setInterval(function () {
+                    remaining--;
+                    if (remaining <= 0) {
+                        clearInterval(currentTimerInterval);
+                        timerEl.textContent = '⚠ EXPIRAT — DAR mai e disponibil!';
+                    } else {
+                        timerEl.textContent = fmt(remaining);
+                    }
+                }, 1000);
+            } else {
+                timerEl.textContent = '';
+            }
+
+            document.getElementById('darkPopupOverlay').classList.add('show');
+            logPopupEvent(p.id, 'PopupShown', null);
+        }
+
+        window.dismissDarkPopup = function () {
+            document.getElementById('darkPopupOverlay').classList.remove('show');
+            if (currentTimerInterval) { clearInterval(currentTimerInterval); currentTimerInterval = null; }
+            var lastId = sessionStorage.getItem(LAST_KEY);
+            if (lastId) logPopupEvent(lastId, 'PopupDismissed', null);
+            schedule();
+        };
+
+        function logPopupEvent(popupId, eventType, target) {
+            if (typeof window.darkLog === 'function') {
+                window.darkLog(eventType, 'Popup', { popupId: popupId, target: target || '' });
+            }
+        }
+
+        function schedule() {
+            var delay = MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY);
+            setTimeout(function () {
+                showPopup(pickRandomPopup());
+            }, delay);
+        }
+
+        // Primul pop-up după 4 min
+        setTimeout(function () {
+            showPopup(pickRandomPopup());
+        }, FIRST_DELAY);
+    })();
+    </script>
+}
+
+</body>
+</html>

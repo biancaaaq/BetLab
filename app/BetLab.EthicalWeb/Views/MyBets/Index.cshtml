@@ -1,0 +1,293 @@
+﻿@model BetLab.EthicalWeb.Models.MyBetsPageViewModel
+@{
+    ViewData["Title"] = "Biletele mele";
+
+    string StatusLabel(string s) => s switch
+    {
+        "Won"       => "Câștigat",
+        "Lost"      => "Pierdut",
+        "Pending"   => "În așteptare",
+        "Active"    => "Activ",
+        "Open"      => "Activ",
+        "CashedOut" => "Cash Out anticipat",
+        _           => s
+    };
+
+    string StatusChip(string s) => s switch
+    {
+        "Won"       => "eth-chip-green",
+        "Lost"      => "eth-chip-red",
+        "Pending"   => "eth-chip-blue",
+        "Active"    => "eth-chip-blue",
+        "Open"      => "eth-chip-blue",
+        "CashedOut" => "eth-chip-orange",
+        _           => "eth-chip-gray"
+    };
+}
+
+@if (TempData["CashOutSuccess"] != null)
+{
+    <div class="alert alert-success mb-3">
+        <i data-lucide="check-circle"></i>
+        <div>@TempData["CashOutSuccess"]</div>
+    </div>
+}
+@if (TempData["CashOutError"] != null)
+{
+    <div class="alert alert-warning mb-3">
+        <i data-lucide="alert-circle"></i>
+        <div>@TempData["CashOutError"]</div>
+    </div>
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">Biletele mele</h1>
+        <p class="eth-page-subtitle">Pariuri sportive plasate — activ, câștigate și pierdute</p>
+    </div>
+</div>
+
+<!-- Sumar -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value">@Model.Bets.Count</div>
+                <div class="stat-label">Total bilete</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-primary">@Model.Active.Count</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-success">@Model.Won.Count</div>
+                <div class="stat-label">Câștigate</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-danger">@Model.Lost.Count</div>
+                <div class="stat-label">Pierdute</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab-uri -->
+<div class="eth-panel">
+    <div class="eth-panel-header" style="padding:0;">
+        <nav class="mybets-tabs">
+            <a href="?tab=all"    class="mybets-tab @(Model.ActiveTab == "all"    ? "mybets-tab--active" : "")">
+                Toate <span class="mybets-tab-count">@Model.Bets.Count</span>
+            </a>
+            <a href="?tab=active" class="mybets-tab @(Model.ActiveTab == "active" ? "mybets-tab--active" : "")">
+                Active <span class="mybets-tab-count">@Model.Active.Count</span>
+            </a>
+            <a href="?tab=won"    class="mybets-tab @(Model.ActiveTab == "won"    ? "mybets-tab--active" : "")">
+                Câștigate <span class="mybets-tab-count">@Model.Won.Count</span>
+            </a>
+            <a href="?tab=lost"   class="mybets-tab @(Model.ActiveTab == "lost"   ? "mybets-tab--active" : "")">
+                Pierdute <span class="mybets-tab-count">@Model.Lost.Count</span>
+            </a>
+            <a href="?tab=cashedout" class="mybets-tab @(Model.ActiveTab == "cashedout" ? "mybets-tab--active" : "")">
+                Cash Out <span class="mybets-tab-count">@Model.CashedOut.Count</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="eth-panel-body p-0">
+        @if (!Model.CurrentTab.Any())
+        {
+            <div class="p-5 text-center text-muted">
+                <i data-lucide="inbox" style="width:40px;height:40px;opacity:.4;"></i>
+                <p class="mt-3 mb-0">Niciun bilet în această categorie.</p>
+            </div>
+        }
+        else
+        {
+            <div class="mybets-list">
+                @foreach (var bet in Model.CurrentTab)
+                {
+                    var isWon       = bet.Status == "Won";
+                    var isLost      = bet.Status == "Lost";
+                    var isCashedOut = bet.Status == "CashedOut";
+                    Model.CashOutPreviews.TryGetValue(bet.BetSlipId, out var coPreview);
+                    var canCashOut  = coPreview?.Available == true && coPreview.CashOutValue > 0;
+
+                    <div class="mybet-card @(isWon ? "mybet-card--won" : isLost ? "mybet-card--lost" : "mybet-card--active")">
+                        <!-- Header bilet -->
+                        <div class="mybet-card__header">
+                            <div class="mybet-card__meta">
+                                <span class="mybet-card__id">#@bet.BetSlipId</span>
+                                <span class="text-muted text-sm">@bet.PlacedAt.ToRomanianTime().ToString("dd MMM yyyy · HH:mm")</span>
+                                <span class="eth-chip eth-chip-gray text-sm">@bet.Type</span>
+                            </div>
+                            <span class="eth-chip @StatusChip(bet.Status)">@StatusLabel(bet.Status)</span>
+                        </div>
+
+                        <!-- Selecții -->
+                        <div class="mybet-card__selections">
+                            @foreach (var sel in bet.Selections)
+                            {
+                                <div class="mybet-selection">
+                                    <div class="mybet-selection__event">
+                                        <span class="mybet-selection__name">@sel.EventName</span>
+                                        <span class="mybet-selection__market text-muted">@sel.MarketName</span>
+                                    </div>
+                                    <div class="mybet-selection__right">
+                                        <span class="mybet-selection__outcome">@sel.OutcomeName</span>
+                                        <span class="mybet-selection__odds">@sel.Odds.ToString("F2")</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Footer financiar -->
+                        <div class="mybet-card__footer">
+                            <div class="mybet-card__finance">
+                                <span>Miză: <strong>@bet.Stake.ToString("F2") RON</strong></span>
+                                <span class="mx-2 text-muted">·</span>
+                                <span>Cotă totală: <strong>@bet.TotalOdds.ToString("F2")</strong></span>
+                                <span class="mx-2 text-muted">·</span>
+                                <span>Câștig potențial: <strong>@bet.PotentialPayout.ToString("F2") RON</strong></span>
+                            </div>
+                            <div>
+                                @if (isWon)
+                                {
+                                    <span class="fw-bold text-success">+@bet.PotentialPayout.ToString("F2") RON</span>
+                                }
+                                else if (isLost)
+                                {
+                                    <span class="fw-bold text-danger">−@bet.Stake.ToString("F2") RON</span>
+                                }
+                                else if (isCashedOut)
+                                {
+                                    <span class="fw-bold" style="color:#D97706;">
+                                        Cash Out: @((bet.ActualPayout ?? 0).ToString("F2")) RON
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted text-sm">În desfășurare</span>
+                                }
+                            </div>
+                        </div>
+
+                        
+                        @if (!isWon && !isLost && !isCashedOut && coPreview != null)
+                        {
+                            <div class="eth-cashout-block">
+                                @if (canCashOut)
+                                {
+                                    var giveUp = bet.PotentialPayout - coPreview.CashOutValue;
+                                    <div class="eth-cashout-grid">
+                                        <div class="eth-cashout-info">
+                                            <div class="eth-cashout-label">
+                                                <i data-lucide="info" style="width:14px;height:14px;"></i>
+                                                Cash Out anticipat — închizi biletul acum cu plată garantată
+                                            </div>
+                                            <div class="eth-cashout-amounts">
+                                                <div>
+                                                    <span class="text-muted text-sm">Primești acum</span>
+                                                    <strong class="d-block">@coPreview.CashOutValue.ToString("F2") RON</strong>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted text-sm">Renunți la</span>
+                                                    <strong class="d-block text-warning">@giveUp.ToString("F2") RON câștig potențial</strong>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted text-sm">Marja casei</span>
+                                                    <strong class="d-block">@coPreview.MarginPct.ToString("0.#")%</strong>
+                                                </div>
+                                            </div>
+                                            <div class="eth-cashout-note">
+                                                @if (coPreview.IsPreMatch)
+                                                {
+                                                    <span>📋 Pre-meci: cash-out la valoarea aproape integrală a mizei (mică taxă administrativă).</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>⚽ Live: valoarea se schimbă în funcție de scor și minutul curent.</span>
+                                                }
+                                                Pe termen lung, cash-out repetat = pierdere statistică prin marja casei.
+                                            </div>
+                                        </div>
+                                        <form asp-controller="MyBets" asp-action="CashOut" method="post" class="eth-cashout-actions"
+                                              onsubmit="return confirm('Confirmi Cash Out?\n\nPrimești @coPreview.CashOutValue.ToString("F2") RON acum (renunți la @giveUp.ToString("F2") RON câștig potențial).');">
+                                            <input type="hidden" name="betSlipId" value="@bet.BetSlipId" />
+                                            <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                <i data-lucide="log-out"></i>
+                                                <span>Cash Out @coPreview.CashOutValue.ToString("F2") RON</span>
+                                            </button>
+                                            <a href="#" class="text-muted text-sm text-decoration-none" style="font-size:0.75rem;">
+                                                Continuă pariul →
+                                            </a>
+                                        </form>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(coPreview.UnavailableReason))
+                                {
+                                    <div class="text-muted text-sm" style="padding:0.5rem 0;">
+                                        <i data-lucide="info" style="width:13px;height:13px;"></i>
+                                        Cash Out indisponibil: @coPreview.UnavailableReason
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<style>
+    .eth-cashout-block {
+        background: #FFFBEB;
+        border-top: 1px solid #FDE68A;
+        padding: 1rem 1.25rem;
+        margin-top: 0.5rem;
+    }
+    .eth-cashout-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+        align-items: center;
+    }
+    .eth-cashout-info { flex: 1; }
+    .eth-cashout-label {
+        display: flex; align-items: center; gap: 0.4rem;
+        font-size: 0.78rem; font-weight: 700; color: #92400E;
+        text-transform: uppercase; letter-spacing: 0.04em;
+        margin-bottom: 0.5rem;
+    }
+    .eth-cashout-amounts {
+        display: flex; gap: 1.5rem; flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+    .eth-cashout-amounts strong { font-size: 1.05rem; color: #111827; }
+    .eth-cashout-amounts .text-warning { color: #92400E !important; }
+    .eth-cashout-note {
+        font-size: 0.78rem; color: #78350F; line-height: 1.5;
+    }
+    .eth-cashout-actions {
+        display: flex; flex-direction: column; gap: 0.4rem;
+        align-items: stretch; margin: 0;
+    }
+    @@media (max-width: 768px) {
+        .eth-cashout-grid { grid-template-columns: 1fr; }
+        .eth-cashout-actions { align-items: flex-start; }
+    }
+</style>
+}

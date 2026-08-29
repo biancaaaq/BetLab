@@ -1,0 +1,63 @@
+@model List<BetLab.DarkWeb.Models.AdminCasinoGameViewModel>
+@{
+    ViewData["Title"] = "Admin — Casino";
+}
+
+<div class="mb-4 d-flex align-items-center gap-2">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+    <h1 class="h4 fw-bold mb-0 ms-2" style="color:#fff;">🎰 Gestionare casino</h1>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+
+<div class="card" style="background:#1e293b;border:1px solid #334155;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0" style="--bs-table-bg:#1e293b;--bs-table-hover-bg:#0f172a;">
+                <thead>
+                    <tr style="border-bottom:1px solid #334155;font-size:0.75rem;text-transform:uppercase;color:#94a3b8;letter-spacing:.05em;">
+                        <th class="px-4 py-3">Joc</th>
+                        <th class="px-3 py-3">Tip</th>
+                        <th class="px-3 py-3">RTP</th>
+                        <th class="px-3 py-3">Volatilitate</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3 text-end">Acțiune</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in Model)
+                    {
+                        <tr style="border-bottom:1px solid #0f172a;">
+                            <td class="px-4 py-3" style="color:#f1f5f9;font-weight:600;">@g.Name</td>
+                            <td class="px-3 py-3">
+                                <span class="badge bg-secondary">@g.Type</span>
+                            </td>
+                            <td class="px-3 py-3" style="color:#34d399;font-weight:700;">@g.RtpPercent.ToString("F2")%</td>
+                            <td class="px-3 py-3" style="color:#94a3b8;font-size:0.85rem;">@g.Volatility</td>
+                            <td class="px-3 py-3">
+                                @if (g.IsActive)
+                                { <span class="badge bg-success">Activ</span> }
+                                else
+                                { <span class="badge bg-danger">Inactiv</span> }
+                            </td>
+                            <td class="px-3 py-3 text-end">
+                                <form asp-action="ToggleGame" method="post" class="d-inline">
+                                    <input type="hidden" name="gameId" value="@g.Id" />
+                                    <button class="btn btn-sm @(g.IsActive ? "btn-outline-danger" : "btn-outline-success")">
+                                        @(g.IsActive ? "Dezactivează" : "Activează")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3 p-3 rounded" style="background:#0f172a;font-size:0.78rem;color:#64748b;">
+    <strong>Notă:</strong> Dezactivarea unui joc îl ascunde din lista de casino pentru utilizatori.
+    Rundele existente nu sunt afectate.
+</div>

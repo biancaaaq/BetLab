@@ -1,0 +1,288 @@
+@{
+    ViewData["Title"] = "Depunere";
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">💳 Depune fonduri</h1>
+</div>
+
+@if (TempData["DepositSuccess"] != null)
+{
+    <div class="dark-alert dark-alert-success mb-4">
+        ✅ <strong>@TempData["DepositSuccess"]</strong>
+        — <a asp-controller="Events" asp-action="Index" style="color:#34D399;font-weight:700;">Pariază acum →</a>
+    </div>
+}
+@if (TempData["DepositError"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-4">⚠️ @TempData["DepositError"]</div>
+}
+
+<!-- Overlay procesare -->
+<div id="processing-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);
+     z-index:9999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:1rem;">
+    <div class="dark-spinner"></div>
+    <div style="color:white;font-size:1.1rem;font-weight:700;">Se procesează depunerea...</div>
+    <div style="color:var(--text-muted);font-size:0.85rem;">Vă rugăm așteptați</div>
+</div>
+
+<div class="row g-4 justify-content-center">
+    <div class="col-lg-6">
+
+        <!-- Urgency + bonus -->
+        <div class="dark-urgency-bar mb-4" style="justify-content:center;">
+            🎁 Bonus <strong style="color:white;margin:0 0.3rem;">200%</strong> la prima depunere —
+            <span id="dep-timer" style="color:var(--gold);font-weight:800;">14:59</span> rămas
+        </div>
+
+        <!-- Sume rapide -->
+        <div class="dark-panel mb-4">
+            <div class="dark-panel-header dark-panel-header--red">⚡ Alege suma</div>
+            <div class="dark-panel-body" style="padding-bottom:0.5rem;">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-bottom:1rem;">
+                    @foreach (var (amt, highlight) in new[] { (50,false),(100,false),(200,true),(300,true),(500,true),(1000,true) })
+                    {
+                        <button type="button"
+                                onclick="selectAmount(@amt)"
+                                class="dark-quick-amt @(highlight ? "dark-quick-amt--hot" : "")"
+                                data-amount="@amt">
+                            @if (highlight) { <span style="font-size:0.6rem;color:var(--gold);display:block;">POPULAR</span> }
+                            <span style="font-weight:800;font-size:1rem;">@amt RON</span>
+                        </button>
+                    }
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <input type="number" id="custom-amount" min="10" max="50000" step="10"
+                           class="form-control-dark" placeholder="Altă sumă..."
+                           oninput="syncCustomAmount(this.value)" />
+                    <span style="color:var(--text-muted);font-size:0.85rem;white-space:nowrap;">RON</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card form -->
+        <div class="dark-panel mb-4">
+            <div class="dark-panel-header">
+                💳 Date card
+                <div style="margin-left:auto;display:flex;gap:0.4rem;align-items:center;">
+                    <span id="card-type-visa"   style="font-size:0.75rem;color:#1A56DB;font-weight:800;opacity:0.4;">VISA</span>
+                    <span id="card-type-mc"     style="font-size:0.75rem;color:#EB001B;font-weight:800;opacity:0.4;">MC</span>
+                    <span id="card-type-maestro" style="font-size:0.75rem;color:#6366F1;font-weight:800;opacity:0.4;">MAESTRO</span>
+                </div>
+            </div>
+            <div class="dark-panel-body">
+
+                <!-- Număr card -->
+                <div style="margin-bottom:1rem;">
+                    <label class="form-label-dark">Număr card</label>
+                    <input type="text" id="card-number" maxlength="19"
+                           class="form-control-dark" placeholder="0000 0000 0000 0000"
+                           oninput="formatCardNumber(this)" autocomplete="cc-number"
+                           style="font-size:1.1rem;letter-spacing:0.1em;" />
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+                    <div>
+                        <label class="form-label-dark">Data expirării</label>
+                        <input type="text" id="card-expiry" maxlength="5"
+                               class="form-control-dark" placeholder="MM/YY"
+                               oninput="formatExpiry(this)" autocomplete="cc-exp" />
+                    </div>
+                    <div>
+                        <label class="form-label-dark">CVV</label>
+                        <div style="position:relative;">
+                            <input type="password" id="card-cvv" maxlength="3"
+                                   class="form-control-dark" placeholder="•••"
+                                   autocomplete="cc-csc" />
+                            <span style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);
+                                         font-size:0.75rem;color:var(--text-dim);">?</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:1.25rem;">
+                    <label class="form-label-dark">Titular card</label>
+                    <input type="text" id="card-name" class="form-control-dark"
+                           placeholder="PRENUME NUME" style="text-transform:uppercase;"
+                           oninput="this.value=this.value.toUpperCase()" autocomplete="cc-name" />
+                </div>
+
+                <!-- Sumă selectată + submit real -->
+                <form id="real-deposit-form" asp-action="Deposit" method="post">
+                    <input type="hidden" name="amount" id="form-amount" value="200" />
+                </form>
+
+                <!-- Preview sumă + buton -->
+                <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);
+                            border-radius:var(--radius);padding:0.85rem 1rem;margin-bottom:1rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="color:var(--text-muted);font-size:0.85rem;">Sumă depusă</span>
+                        <span id="preview-amount" style="font-size:1.4rem;font-weight:900;color:#34D399;">200 RON</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.3rem;">
+                        <span style="color:var(--text-muted);font-size:0.85rem;">Bonus 200%</span>
+                        <span id="preview-bonus" style="font-size:1rem;font-weight:700;color:var(--gold);">+400 RON</span>
+                    </div>
+                    <div style="border-top:1px solid rgba(52,211,153,0.2);margin-top:0.5rem;padding-top:0.5rem;
+                                display:flex;justify-content:space-between;">
+                        <span style="font-size:0.85rem;color:var(--text-muted);">Total în cont</span>
+                        <span id="preview-total" style="font-size:1.1rem;font-weight:900;color:white;">600 RON</span>
+                    </div>
+                </div>
+
+                <button type="button" onclick="submitDeposit()"
+                        class="btn-dark-primary pulse w-100"
+                        style="font-size:1.05rem;padding:0.9rem;font-weight:900;">
+                    🔒 DEPUNE ACUM
+                </button>
+
+                <div style="font-size:0.68rem;color:#374151;text-align:center;margin-top:0.6rem;">
+                    *Bonus supus rulaj 40x. Retragerea bonusului necesită îndeplinirea condițiilor T&amp;C.
+                </div>
+            </div>
+        </div>
+
+        <!-- Withdraw link -->
+        <div style="text-align:center;margin-bottom:0.75rem;">
+            <a asp-controller="Account" asp-action="Withdraw"
+               style="font-size:0.72rem;color:#4B5563;text-decoration:underline;">
+                Solicită retragere fonduri →
+            </a>
+        </div>
+
+        <!-- Trust badges -->
+        <div class="dark-panel">
+            <div class="dark-panel-body" style="display:flex;justify-content:space-around;padding:0.75rem;">
+                @foreach (var (icon, label) in new[] { ("🔒","SSL 256-bit"), ("⚡","Instant"), ("🏦","Fără comision"), ("🛡️","Fonduri protejate") })
+                {
+                    <div style="text-align:center;font-size:0.72rem;color:var(--text-muted);">
+                        <div style="font-size:1.2rem;">@icon</div>
+                        <div>@label</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+<style>
+.dark-quick-amt {
+    background: #1A1A1A;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: white;
+    padding: 0.5rem 0.4rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.12s;
+    width: 100%;
+}
+.dark-quick-amt:hover, .dark-quick-amt.selected {
+    border-color: var(--primary);
+    background: rgba(220,38,38,0.15);
+}
+.dark-quick-amt--hot {
+    border-color: rgba(245,158,11,0.4);
+}
+.dark-quick-amt--hot.selected {
+    border-color: var(--gold);
+    background: rgba(245,158,11,0.12);
+}
+.dark-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(255,255,255,0.1);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+<script>
+var selectedAmount = 200;
+
+function selectAmount(amt) {
+    selectedAmount = amt;
+    document.querySelectorAll('.dark-quick-amt').forEach(b => b.classList.remove('selected'));
+    document.querySelector('[data-amount="' + amt + '"]')?.classList.add('selected');
+    document.getElementById('custom-amount').value = '';
+    updatePreview();
+}
+
+function syncCustomAmount(val) {
+    var amt = parseFloat(val);
+    if (amt > 0) {
+        selectedAmount = amt;
+        document.querySelectorAll('.dark-quick-amt').forEach(b => b.classList.remove('selected'));
+        updatePreview();
+    }
+}
+
+function updatePreview() {
+    var amt = selectedAmount || 0;
+    var bonus = amt * 2;
+    document.getElementById('preview-amount').textContent = amt.toLocaleString('ro-RO', {minimumFractionDigits:2}) + ' RON';
+    document.getElementById('preview-bonus').textContent  = '+' + bonus.toLocaleString('ro-RO', {minimumFractionDigits:2}) + ' RON';
+    document.getElementById('preview-total').textContent  = (amt + bonus).toLocaleString('ro-RO', {minimumFractionDigits:2}) + ' RON';
+    document.getElementById('form-amount').value = amt;
+}
+
+function formatCardNumber(el) {
+    var val = el.value.replace(/\D/g,'').slice(0,16);
+    el.value = val.match(/.{1,4}/g)?.join(' ') || val;
+    var first = val[0];
+    document.getElementById('card-type-visa').style.opacity   = first === '4' ? '1' : '0.25';
+    document.getElementById('card-type-mc').style.opacity     = first === '5' ? '1' : '0.25';
+    document.getElementById('card-type-maestro').style.opacity = first === '6' ? '1' : '0.25';
+}
+
+function formatExpiry(el) {
+    var val = el.value.replace(/\D/g,'').slice(0,4);
+    if (val.length >= 3) el.value = val.slice(0,2) + '/' + val.slice(2);
+    else el.value = val;
+}
+
+function submitDeposit() {
+    var cardNum = document.getElementById('card-number').value.replace(/\s/g,'');
+    var expiry  = document.getElementById('card-expiry').value;
+    var cvv     = document.getElementById('card-cvv').value;
+    var name    = document.getElementById('card-name').value.trim();
+
+    if (cardNum.length < 16) { alert('Numărul cardului este incomplet.'); return; }
+    if (expiry.length < 5)   { alert('Data expirării este incompletă.'); return; }
+    if (cvv.length < 3)      { alert('CVV-ul este incomplet.'); return; }
+    if (!name)               { alert('Introduceți titularul cardului.'); return; }
+    if (!selectedAmount || selectedAmount < 10) { alert('Suma minimă de depunere este 10 RON.'); return; }
+
+    document.getElementById('form-amount').value = selectedAmount;
+
+    var overlay = document.getElementById('processing-overlay');
+    overlay.style.display = 'flex';
+
+    setTimeout(function() {
+        document.getElementById('real-deposit-form').submit();
+    }, 2200);
+}
+
+// Selectează implicit 200 RON
+document.querySelector('[data-amount="200"]')?.classList.add('selected');
+updatePreview();
+
+// Timer urgency
+(function(){
+    var key = 'dark_dep_timer';
+    var end = sessionStorage.getItem(key);
+    if (!end) { end = Date.now() + 15*60*1000; sessionStorage.setItem(key, end); }
+    function tick() {
+        var r = Math.max(0, end - Date.now());
+        var m = Math.floor(r/60000), s = Math.floor((r%60000)/1000);
+        var el = document.getElementById('dep-timer');
+        if (el) el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        if (r > 0) setTimeout(tick, 1000);
+        else { sessionStorage.removeItem(key); end = Date.now()+15*60*1000; sessionStorage.setItem(key,end); setTimeout(tick,1000); }
+    }
+    tick();
+})();
+</script>
+}

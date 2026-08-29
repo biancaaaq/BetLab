@@ -1,0 +1,338 @@
+﻿@model List<BetLab.EthicalWeb.Models.AdminEventViewModel>
+@{
+    ViewData["Title"] = "Admin — Evenimente";
+    var liveCount   = Model.Count(e => e.Status == "Live");
+    var openCount   = Model.Count(e => e.Status == "Open");
+    var finishedCount = Model.Count(e => e.Status == "Finished");
+
+    var competitions = new[] {
+        new { LeagueId =   1, Season = 2026, Name = "FIFA World Cup 2026",   Country = "International" },
+        new { LeagueId =   2, Season = 2025, Name = "UEFA Champions League", Country = "Europe" },
+        new { LeagueId =  39, Season = 2025, Name = "Premier League",        Country = "England" },
+        new { LeagueId = 140, Season = 2025, Name = "La Liga",               Country = "Spain" },
+        new { LeagueId =  78, Season = 2025, Name = "Bundesliga",            Country = "Germany" },
+        new { LeagueId = 135, Season = 2025, Name = "Serie A",               Country = "Italy" },
+        new { LeagueId =  61, Season = 2025, Name = "Ligue 1",               Country = "France" },
+        new { LeagueId = 283, Season = 2025, Name = "Superliga României",    Country = "Romania" },
+    };
+}
+
+<!-- Header simplu -->
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h4 fw-bold mb-1">📅 Gestionare evenimente</h1>
+        <div class="text-muted small">
+            <span class="badge bg-primary-subtle text-primary">@openCount Open</span>
+            <span class="badge bg-success-subtle text-success">@liveCount Live</span>
+            <span class="badge bg-secondary-subtle text-secondary">@finishedCount Finalizate</span>
+        </div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+</div>
+
+<!-- Notice: backend unic -->
+<div class="alert alert-info py-2 mb-3" style="font-size:0.82rem;">
+    <strong>ℹ️ Modificările aici se aplică pe AMBELE platforme</strong> (Ethical + Dark) — backend unic.
+    Câștigătorul se determină automat din sursa oficială (API-FOOTBALL). Admin nu poate selecta manual cine câștigă.
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success py-2 mb-3">✅ @TempData["AdminSuccess"]</div> }
+@if (TempData["AdminError"] != null)
+{ <div class="alert alert-danger py-2 mb-3">⚠️ @TempData["AdminError"]</div> }
+
+<!-- Cele 3 panouri de acțiuni -->
+<div class="row g-3 mb-3">
+
+    <!-- LIVE -->
+    <div class="col-lg-4">
+        <div class="card h-100 border-danger-subtle">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:1.4rem;">🔴</span>
+                    <h6 class="fw-bold mb-0">Live & Sync</h6>
+                </div>
+                <p class="text-muted small mb-3">Pentru meciurile în desfășurare</p>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" id="autoSyncToggle"
+                            class="btn btn-outline-success btn-sm flex-grow-1"
+                            onclick="toggleAutoSync()">
+                        ⏸ Auto-sync OFF
+                    </button>
+                    <form asp-action="SyncLiveApiFootball" method="post" class="d-inline">
+                        <button class="btn btn-outline-danger btn-sm">🔄 Sync acum</button>
+                    </form>
+                </div>
+
+                <div class="mt-3 small text-muted">
+                    <div>📊 <strong>@liveCount</strong> @(liveCount == 1 ? "meci" : "meciuri") live</div>
+                    <div>⏱️ Ultimul sync: <strong id="lastSyncDisplay">niciodată</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRE-MECI -->
+    <div class="col-lg-4">
+        <div class="card h-100 border-info-subtle">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:1.4rem;">📥</span>
+                    <h6 class="fw-bold mb-0">Pre-meci</h6>
+                </div>
+                <p class="text-muted small mb-3">Import meciuri viitoare + adăugare manuală</p>
+
+                <div class="d-flex flex-column gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-info btn-sm dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                            ⬇️ Import competiție
+                        </button>
+                        <ul class="dropdown-menu w-100">
+                            @foreach (var comp in competitions)
+                            {
+                                <li>
+                                    <form asp-action="ImportApiFootball" method="post" class="d-inline w-100">
+                                        <input type="hidden" name="leagueId" value="@comp.LeagueId" />
+                                        <input type="hidden" name="season"   value="@comp.Season" />
+                                        <input type="hidden" name="name"     value="@comp.Name" />
+                                        <input type="hidden" name="country"  value="@comp.Country" />
+                                        <input type="hidden" name="onlyUpcoming" value="true" />
+                                        <button class="dropdown-item">@comp.Name <small class="text-muted">(@comp.Country)</small></button>
+                                    </form>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+
+                    <form asp-action="ImportApiFootballFixture" method="post" class="input-group input-group-sm">
+                        <input type="number" name="fixtureId" placeholder="Fixture ID API-FOOTBALL"
+                               class="form-control" required />
+                        <button class="btn btn-outline-success">📥 Import</button>
+                    </form>
+
+                    <a asp-action="AddEvent" class="btn btn-primary btn-sm">➕ Adaugă manual</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DECONTARE -->
+    <div class="col-lg-4">
+        <div class="card h-100 border-warning-subtle">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:1.4rem;">💰</span>
+                    <h6 class="fw-bold mb-0">Decontare</h6>
+                </div>
+                <p class="text-muted small mb-3">Procesare plăți pentru meciurile finalizate</p>
+
+                <form asp-action="SyncEvents" method="post"
+                      onsubmit="return confirm('Sincronizezi și decontezi automat toate meciurile finalizate?')">
+                    <input type="hidden" name="autoSettle" value="true" />
+                    <button class="btn btn-warning btn-sm w-100">⚡ Sync + Decontare auto</button>
+                </form>
+
+                <div class="mt-3 small text-muted">
+                    Decontează automat toate meciurile cu status <strong>Finished</strong> și plătește câștigătorii.
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@if (!Model.Any())
+{
+    <div class="eth-panel">
+        <div class="eth-panel-body text-center text-muted py-5">Nu există evenimente.</div>
+    </div>
+}
+else
+{
+    @foreach (var ev in Model)
+    {
+        var isOpen     = ev.Status == "Open";
+        var isLive     = ev.Status == "Live";
+        var isFinished = ev.Status == "Finished";
+        var mainMarket = ev.Markets.FirstOrDefault();
+
+        <div class="eth-panel mb-3 @(isLive ? "border-success" : "")">
+            <div class="eth-panel-body">
+                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                        <div class="fw-bold">@ev.HomeTeam <span class="text-muted">vs</span> @ev.AwayTeam</div>
+                        <div class="text-muted" style="font-size:0.8rem;">
+                            @ev.Competition · @ev.StartTimeUtc.ToRomanianTime().ToString("dd MMM yyyy HH:mm")
+                            · <strong class="text-warning">@ev.BetCount pariuri</strong>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        @if (isLive)
+                        {
+                            <span class="badge bg-success">● LIVE</span>
+                        }
+                        else if (isFinished)
+                        {
+                            <span class="badge bg-secondary">Finalizat</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-primary">Deschis</span>
+                        }
+                    </div>
+                </div>
+
+                @if (mainMarket != null)
+                {
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        @foreach (var o in mainMarket.Outcomes)
+                        {
+                            <div class="p-2 rounded border @(o.IsWinning ? "border-success bg-success bg-opacity-10" : "")"
+                                 style="min-width:80px;">
+                                <div class="text-muted" style="font-size:0.7rem;">@o.Code · @o.Name</div>
+                                <div class="fw-bold">@o.Odds.ToString("F2") @(o.IsWinning ? "✅" : "")</div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="d-flex gap-2 flex-wrap">
+                    @if (isOpen)
+                    {
+                        <form asp-action="MarkLive" method="post" class="d-inline">
+                            <input type="hidden" name="eventId" value="@ev.Id" />
+                            <button class="btn btn-sm btn-success">🔴 Marchează LIVE</button>
+                        </form>
+                    }
+                    @if (isLive)
+                    {
+                        <form asp-action="MarkOpen" method="post" class="d-inline">
+                            <input type="hidden" name="eventId" value="@ev.Id" />
+                            <button class="btn btn-sm btn-outline-secondary">Scoate din LIVE</button>
+                        </form>
+                    }
+                    @if (!isFinished && mainMarket != null)
+                    {
+                        var winningOutcome = mainMarket.Outcomes.FirstOrDefault(o => o.IsWinning);
+                        @if (winningOutcome != null)
+                        {
+                            <!-- Câștigător determinat automat de API — admin NU poate modifica -->
+                            <span class="badge bg-success-subtle text-success border border-success-subtle"
+                                  style="font-size:0.78rem;padding:0.4rem 0.6rem;">
+                                ✓ Câștigător: <strong>@winningOutcome.Code · @winningOutcome.Name</strong>
+                                <span class="text-muted ms-1" style="font-size:0.7rem;">(verificat oficial)</span>
+                            </span>
+                            <form asp-action="SettleEvent" method="post" class="d-inline"
+                                  onsubmit="return confirm('Decontezi evenimentul și procesezi toate pariurile. Continui?')">
+                                <input type="hidden" name="eventId" value="@ev.Id" />
+                                <button class="btn btn-sm btn-danger">💰 Decontează</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-muted small" style="font-style:italic;">
+                                ⏳ Așteptăm rezultat oficial — folosește <strong>Sync statusuri</strong> după ce meciul s-a încheiat.
+                            </span>
+                        }
+                    }
+                    @if (isFinished)
+                    {
+                        <span class="text-muted small">Eveniment finalizat</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+<script>
+    // Auto-sync + display "ultimul sync"
+    (function () {
+        var KEY_ON   = 'eth_admin_autosync';
+        var KEY_LAST = 'eth_admin_lastsync';
+        var INTERVAL_MS = 20 * 1000;  // 20 secunde — plan Plus = 7500 cereri/zi
+        var timerId = null;
+        var displayTimerId = null;
+
+        function setLabel(on) {
+            var btn = document.getElementById('autoSyncToggle');
+            if (!btn) return;
+            if (on) {
+                btn.textContent = '⏵ Auto-sync ON (20s)';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-success');
+            } else {
+                btn.textContent = '⏸ Auto-sync OFF';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+            }
+        }
+
+        function updateLastSyncDisplay() {
+            var el = document.getElementById('lastSyncDisplay');
+            if (!el) return;
+            var ts = parseInt(sessionStorage.getItem(KEY_LAST) || '0', 10);
+            if (!ts) { el.textContent = 'niciodată'; el.style.color = '#9CA3AF'; return; }
+            var diff = Math.floor((Date.now() - ts) / 1000);
+            var txt;
+            if (diff < 5) txt = 'chiar acum';
+            else if (diff < 60) txt = 'acum ' + diff + ' sec';
+            else if (diff < 3600) txt = 'acum ' + Math.floor(diff / 60) + ' min';
+            else txt = 'acum ' + Math.floor(diff / 3600) + ' h';
+            el.textContent = txt;
+            // Verde dacă < 30s, galben < 2min, gri altfel
+            el.style.color = diff < 30 ? '#059669' : (diff < 120 ? '#D97706' : '#6B7280');
+        }
+
+        function doSync() {
+            console.log('[auto-sync] Sync...');
+            fetch('@Url.Action("SyncLiveApiFootball", "Admin")', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            }).then(function (r) {
+                if (r.ok) {
+                    sessionStorage.setItem(KEY_LAST, Date.now().toString());
+                    updateLastSyncDisplay();
+                    console.log('[auto-sync] OK');
+                } else {
+                    console.warn('[auto-sync] HTTP', r.status);
+                }
+            }).catch(function (e) {
+                console.error('[auto-sync] Eroare:', e);
+            });
+        }
+
+        function start() {
+            stop();
+            sessionStorage.setItem(KEY_ON, '1');
+            setLabel(true);
+            doSync();                                  // imediat
+            timerId = setInterval(doSync, INTERVAL_MS); // apoi la 20s
+            console.log('[auto-sync] PORNIT la 20s.');
+        }
+
+        function stop() {
+            if (timerId) { clearInterval(timerId); timerId = null; }
+            sessionStorage.removeItem(KEY_ON);
+            setLabel(false);
+            console.log('[auto-sync] OPRIT.');
+        }
+
+        window.toggleAutoSync = function () {
+            if (timerId) stop(); else start();
+        };
+
+        // Refresh display "ultimul sync" la fiecare 5 sec
+        displayTimerId = setInterval(updateLastSyncDisplay, 5000);
+        updateLastSyncDisplay();
+
+        // Restaurăm starea dacă pagina e reîncărcată cu auto-sync activ
+        if (sessionStorage.getItem(KEY_ON) === '1') {
+            start();
+        }
+    })();
+</script>
+}

@@ -1,0 +1,628 @@
+@{
+    ViewData["Title"] = "Promoții & Bonusuri";
+
+    var hasToken   = !string.IsNullOrWhiteSpace(Context.Session.GetString("Dark_JwtToken"));
+    var userIdStr  = Context.Session.GetString("Dark_CurrentUserId") ?? "";
+    var claimKey   = $"Dark_DailyBonus_{DateTime.UtcNow:yyyyMMdd}_{userIdStr}";
+    var freeBetKey = $"Dark_FreeBet_{userIdStr}";
+    var wheelKey   = $"Dark_WheelSpin_{DateTime.UtcNow:yyyyMMdd}_{userIdStr}";
+    var dailyClaimed  = Context.Session.GetString(claimKey)   == "claimed";
+    var freeBetClaimed = Context.Session.GetString(freeBetKey) == "claimed";
+    var wheelSpun      = Context.Session.GetString(wheelKey)   == "spun";
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">🎁 Promoții & Bonusuri</h1>
+    <p class="dark-page-subtitle">Oferte exclusive pentru tine — expiră în curând!</p>
+</div>
+
+@if (TempData["PromoSuccess"] != null)
+{
+    <div class="dark-alert dark-alert-success mb-4">🎉 @TempData["PromoSuccess"]</div>
+}
+@if (TempData["PromoError"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-4">⚠️ @TempData["PromoError"]</div>
+}
+
+<!-- Urgency bar -->
+<div class="dark-urgency-bar mb-4" style="max-width:none;">
+    ⚡ Oferte valabile pentru <span id="promo-timer">23:59:47</span> — Nu rata!
+</div>
+
+<!-- 
+     ROATA NOROCULUI — "Învârte roata și primește o surpriză!"
+     Dark pattern: Variable Ratio Reinforcement Schedule (Skinner, 1948).
+     Recompensa e imprevizibilă — cel mai adictiv program de întărire.
+     Near-miss-ul ("Aproape!") amplifică dorința de a mai încerca.
+     -->
+<div id="wheel-section" class="wheel-hero mb-4">
+    <div class="wheel-hero__left">
+        <div class="wheel-hero__badge">🎡 ZILNIC</div>
+        <h2 class="wheel-hero__title">Învârte roata<br>și primești o surpriză!</h2>
+        <p class="wheel-hero__sub">
+            Fiecare zi aduce o recompensă <strong>diferită</strong> — de la 2 RON la un
+            <span style="color:#FCD34D;font-weight:900;">JACKPOT de 100 RON</span>.
+            Nimeni nu știe ce îl așteaptă!
+        </p>
+        @if (!hasToken)
+        {
+            <a asp-controller="Account" asp-action="Register"
+               class="wheel-spin-btn pulse" id="spin-btn">
+                🔐 Creează cont să joci
+            </a>
+        }
+        else if (wheelSpun)
+        {
+            <button class="wheel-spin-btn wheel-spin-btn--done" disabled id="spin-btn">
+                ✅ Ai învârtit azi — revino mâine!
+            </button>
+        }
+        else
+        {
+            <button class="wheel-spin-btn pulse" id="spin-btn" onclick="startSpin()">
+                🎡 ÎNVÂRTE ACUM!
+            </button>
+        }
+        <p class="wheel-hero__hint" id="wheel-hint">
+            @if (wheelSpun) { <text>Ți-am creditat recompensa de azi ✨</text> }
+            else { <text>⚡ <strong style="color:#FCD34D;">2.847 jucători</strong> au învârtit azi deja!</text> }
+        </p>
+    </div>
+
+    <div class="wheel-hero__right">
+        <!-- Indicator (pointer) fix deasupra roții -->
+        <div class="wheel-pointer">▼</div>
+        <!-- Roata propriu-zisă — 8 segmente identice ca în WheelSegments din controller -->
+        <div class="wheel" id="wheel">
+            <!-- Segmentele sunt pur CSS (conic-gradient). Labelurile sunt layere rotite. -->
+            <div class="wheel-label" style="--a:22.5deg"><span>5 RON</span></div>
+            <div class="wheel-label" style="--a:67.5deg"><span>50 RON 🎉</span></div>
+            <div class="wheel-label" style="--a:112.5deg"><span>2 RON</span></div>
+            <div class="wheel-label" style="--a:157.5deg"><span>JACKPOT<br>💎</span></div>
+            <div class="wheel-label" style="--a:202.5deg"><span>10 RON</span></div>
+            <div class="wheel-label" style="--a:247.5deg"><span>Aproape!<br>😬</span></div>
+            <div class="wheel-label" style="--a:292.5deg"><span>20 RON</span></div>
+            <div class="wheel-label" style="--a:337.5deg"><span>5 rotiri<br>🎁</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal recompensă -->
+<div id="wheel-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);
+     z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#111;border:2px solid #F59E0B;border-radius:16px;padding:2.5rem 2rem;
+                max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(245,158,11,0.3);">
+        <div id="wm-icon" style="font-size:4rem;line-height:1;margin-bottom:0.75rem;">🎉</div>
+        <div id="wm-title" style="font-size:1.5rem;font-weight:900;color:white;margin-bottom:0.5rem;">
+            Felicitări!
+        </div>
+        <div id="wm-body" style="font-size:1rem;color:#D1D5DB;margin-bottom:1.5rem;line-height:1.6;">
+            Ai câștigat <strong id="wm-label" style="color:#FCD34D;font-size:1.3rem;">—</strong>
+        </div>
+        <div id="wm-balance" style="display:none;font-size:0.85rem;color:#6EE7B7;margin-bottom:1rem;"></div>
+        <button onclick="closeWheelModal()"
+                style="background:linear-gradient(135deg,#DC2626,#991B1B);color:white;border:none;
+                       border-radius:8px;padding:0.75rem 2.5rem;font-size:1rem;font-weight:800;
+                       cursor:pointer;width:100%;">
+            Continuă! 🔥
+        </button>
+    </div>
+</div>
+
+<!-- Carduri promoții -->
+<div class="promos-grid">
+
+    <!-- 1. Bonus zilnic -->
+    <div class="promo-card @(dailyClaimed ? "promo-card--claimed" : "promo-card--hot")">
+        <div class="promo-card__badge">⚡ ZILNIC</div>
+        <div class="promo-card__icon">🎁</div>
+        <h3 class="promo-card__title">Bonus Zilnic</h3>
+        <p class="promo-card__desc">
+            Intră zilnic pe BetLab și primești <strong>10 RON GRATUIT</strong> în contul tău.
+            Fără condiții, fără minim de ruladă!
+        </p>
+        <div class="promo-card__value">+10 RON / zi</div>
+        <div class="promo-card__footer">
+            <span class="promo-claimed-count">🔥 2.847 jucători au revendicat astăzi</span>
+            @if (!hasToken)
+            {
+                <a asp-controller="Account" asp-action="Register" class="promo-cta-btn">
+                    Creează cont →
+                </a>
+            }
+            else if (dailyClaimed)
+            {
+                <span class="promo-cta-btn promo-cta-btn--disabled">✅ Revendicat</span>
+            }
+            else
+            {
+                <form asp-controller="Promotions" asp-action="ClaimDailyBonus" method="post">
+                    <button type="submit" class="promo-cta-btn pulse">🎁 Revendică acum!</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <!-- 2. Free Bet -->
+    <div class="promo-card @(freeBetClaimed ? "promo-card--claimed" : "")">
+        <div class="promo-card__badge">🆕 NOU</div>
+        <div class="promo-card__icon">🎯</div>
+        <h3 class="promo-card__title">Free Bet 50 RON</h3>
+        <p class="promo-card__desc">
+            Primul tău pariu la BetLab este <strong>gratuit</strong>! Primești 50 RON free bet
+            valabil pe orice eveniment cu cotă minimă 1.50.
+        </p>
+        <div class="promo-card__value">50 RON GRATUIT</div>
+        <div class="promo-card__footer">
+            <span class="promo-claimed-count">⏳ Doar 127 free bet-uri rămase!</span>
+            @if (!hasToken)
+            {
+                <a asp-controller="Account" asp-action="Register" class="promo-cta-btn">
+                    Activează acum →
+                </a>
+            }
+            else if (freeBetClaimed)
+            {
+                <span class="promo-cta-btn promo-cta-btn--disabled">✅ Activat</span>
+            }
+            else
+            {
+                <form asp-controller="Promotions" asp-action="ClaimFreeBet" method="post">
+                    <button type="submit" class="promo-cta-btn">🎯 Activează Free Bet</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <!-- 3. Bonus Bun Venit — informativ -->
+    <div class="promo-card">
+        <div class="promo-card__badge" style="background:linear-gradient(135deg,#7C3AED,#5B21B6);">👑 PREMIUM</div>
+        <div class="promo-card__icon">🚀</div>
+        <h3 class="promo-card__title">Bonus 200% la Depunere</h3>
+        <p class="promo-card__desc">
+            Depune minim 50 RON și primești <strong>200% bonus</strong> — până la 500 RON extra.
+            Multiplică-ți capitalul înainte de primul pariu!
+        </p>
+        <div class="promo-card__value" style="color:#A78BFA;">Până la +500 RON</div>
+        <div class="promo-card__footer">
+            <span class="promo-claimed-count">⭐ 14.320 jucători au beneficiat</span>
+            <a asp-controller="Account" asp-action="Deposit" class="promo-cta-btn" style="background:linear-gradient(135deg,#5B21B6,#7C3AED);">
+                + Depune acum
+            </a>
+        </div>
+    </div>
+
+    <!-- 4. Cashback -->
+    <div class="promo-card">
+        <div class="promo-card__badge" style="background:linear-gradient(135deg,#065F46,#047857);">💚 CASHBACK</div>
+        <div class="promo-card__icon">💰</div>
+        <h3 class="promo-card__title">Cashback Săptămânal 10%</h3>
+        <p class="promo-card__desc">
+            Dacă n-ai câștigat săptămâna asta, noi îți returnăm <strong>10% din pierderi</strong>.
+            Maxim 200 RON cashback per săptămână.
+        </p>
+        <div class="promo-card__value" style="color:#34D399;">Până la 200 RON înapoi</div>
+        <div class="promo-card__footer">
+            <span class="promo-claimed-count">🗓️ Creditat în fiecare luni</span>
+            <span class="promo-cta-btn" style="background:#065F46;cursor:default;">
+                Auto-activat 🔄
+            </span>
+        </div>
+    </div>
+
+    <!-- 5. Parlay Boost -->
+    <div class="promo-card">
+        <div class="promo-card__badge" style="background:linear-gradient(135deg,#B45309,#D97706);">🔥 BOOST</div>
+        <div class="promo-card__icon">📈</div>
+        <h3 class="promo-card__title">Parlay Boost +15%</h3>
+        <p class="promo-card__desc">
+            Pariuri multiple cu 4+ selecții primesc un <strong>boost de cotă de 15%</strong>
+            automat. Mai multe selecții = mai mulți bani!
+        </p>
+        <div class="promo-card__value" style="color:#FCD34D;">+15% la multiplu 4+</div>
+        <div class="promo-card__footer">
+            <span class="promo-claimed-count">⚡ Aplicat automat pe bilet</span>
+            <a asp-controller="Events" asp-action="Index" class="promo-cta-btn" style="background:linear-gradient(135deg,#B45309,#D97706);">
+                🔥 Pariază acum
+            </a>
+        </div>
+    </div>
+
+    <!-- 6. Reload Bonus -->
+    <div class="promo-card">
+        <div class="promo-card__badge" style="background:linear-gradient(135deg,#1E40AF,#1D4ED8);">🔁 RELOAD</div>
+        <div class="promo-card__icon">⚡</div>
+        <h3 class="promo-card__title">Reload Bonus Weekend</h3>
+        <p class="promo-card__desc">
+            În fiecare weekend, primești <strong>25% bonus</strong> la orice depunere de minim 100 RON.
+            Maxim 150 RON bonus. Valabil sâmbătă și duminică.
+        </p>
+        <div class="promo-card__value" style="color:#93C5FD;">+25% weekend</div>
+        <div class="promo-card__footer">
+            <span class="promo-claimed-count">📅 Sâmbătă–Duminică</span>
+            <a asp-controller="Account" asp-action="Deposit" class="promo-cta-btn" style="background:linear-gradient(135deg,#1E40AF,#1D4ED8);">
+                + Depune acum
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<!-- T&C microfont — dark pattern clasic -->
+<div style="margin-top:2rem;padding:1rem;background:#0D0D0D;border-radius:var(--radius);
+            font-size:0.65rem;color:#374151;line-height:1.6;">
+    *Termeni și condiții: Toate bonusurile sunt supuse unei condiții de ruladă de 35x.
+    Free Bet-ul nu este retragibil. Cashback-ul se acordă sub formă de credit bonus cu ruladă 10x.
+    Boost-ul de parlay este calculat pe cota totală după multiplicare.
+    BetLab îți poate suspenda bonusurile oricând, fără notificare prealabilă.
+    18+. Joc responsabil. GamblingTherapy.org
+</div>
+
+@section Scripts {
+<style>
+/* Wheel hero */
+.wheel-hero {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    background: linear-gradient(135deg,#1a0505,#0D0D0D,#1a0a00);
+    border: 1px solid rgba(245,158,11,0.35);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2rem 2rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.wheel-hero::before {
+    content:'';
+    position:absolute;
+    inset:0;
+    background:radial-gradient(ellipse at 70% 50%,rgba(220,38,38,0.08),transparent 65%);
+    pointer-events:none;
+}
+.wheel-hero__left { flex:1;min-width:0; }
+.wheel-hero__badge {
+    display:inline-flex;align-items:center;
+    font-size:0.65rem;font-weight:800;letter-spacing:0.08em;
+    padding:0.2rem 0.7rem;border-radius:999px;
+    background:linear-gradient(135deg,#DC2626,#991B1B);
+    color:white;text-transform:uppercase;margin-bottom:0.75rem;
+    animation:pulse-badge 2s ease-in-out infinite;
+}
+@@keyframes pulse-badge { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.7)} 50%{box-shadow:0 0 0 8px rgba(220,38,38,0)} }
+.wheel-hero__title {
+    font-size:1.7rem;font-weight:900;color:white;line-height:1.2;margin-bottom:0.6rem;
+}
+.wheel-hero__sub {
+    font-size:0.88rem;color:var(--text-muted);line-height:1.6;margin-bottom:1.25rem;
+}
+.wheel-spin-btn {
+    display:inline-block;padding:0.8rem 2.2rem;
+    background:linear-gradient(135deg,#F59E0B,#DC2626);
+    color:white;font-size:1rem;font-weight:900;border:none;
+    border-radius:var(--radius);cursor:pointer;text-decoration:none;
+    transition:all 0.2s;box-shadow:0 4px 20px rgba(220,38,38,0.4);
+    letter-spacing:0.02em;
+}
+.wheel-spin-btn:hover { transform:translateY(-2px);box-shadow:0 6px 28px rgba(220,38,38,0.5);color:white; }
+.wheel-spin-btn--done {
+    background:#1F2937;color:#6B7280;box-shadow:none;cursor:not-allowed;
+}
+.wheel-spin-btn--done:hover { transform:none;box-shadow:none; }
+.wheel-spin-btn:disabled { pointer-events:none; }
+.wheel-hero__hint {
+    margin-top:0.8rem;font-size:0.78rem;color:var(--text-dim);
+}
+/* Roata propriu-zisă */
+.wheel-hero__right {
+    position:relative;width:260px;height:260px;flex-shrink:0;
+}
+.wheel-pointer {
+    position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+    font-size:1.5rem;color:#FCD34D;z-index:10;text-shadow:0 0 10px rgba(252,211,77,0.8);
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,0.8));
+}
+.wheel {
+    width:260px;height:260px;border-radius:50%;
+    background:conic-gradient(
+        #DC2626    0deg   45deg,
+        #F59E0B   45deg   90deg,
+        #1E3A2F   90deg  135deg,
+        #92400E  135deg  180deg,
+        #7F1D1D  180deg  225deg,
+        #374151  225deg  270deg,
+        #78350F  270deg  315deg,
+        #1F2937  315deg  360deg
+    );
+    border:4px solid #F59E0B;
+    box-shadow:0 0 30px rgba(245,158,11,0.3),inset 0 0 20px rgba(0,0,0,0.3);
+    position:relative;
+    transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99);
+    will-change:transform;
+}
+/* Centru roată */
+.wheel::after {
+    content:'🎡';
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:44px;height:44px;
+    background:#0D0D0D;border:3px solid #F59E0B;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.1rem;box-shadow:0 0 12px rgba(245,158,11,0.5);
+    z-index:5;
+}
+/* Layere label — câte unul per segment */
+.wheel-label {
+    position:absolute;inset:0;border-radius:50%;
+    transform:rotate(var(--a));
+    pointer-events:none;z-index:3;
+}
+.wheel-label span {
+    position:absolute;top:10%;left:50%;
+    transform:translateX(-50%);
+    font-size:0.6rem;font-weight:900;color:white;
+    text-shadow:0 1px 3px rgba(0,0,0,0.9);
+    text-align:center;width:52px;line-height:1.2;
+}
+/* ── separatoare ── */
+.wheel-sep {
+    position:absolute;inset:0;border-radius:50%;
+    pointer-events:none;z-index:2;
+}
+/* Responsive */
+@@media (max-width:640px) {
+    .wheel-hero { flex-direction:column; }
+    .wheel-hero__right { width:220px;height:220px; }
+    .wheel { width:220px;height:220px; }
+    .wheel-hero__title { font-size:1.35rem; }
+}
+/*  Promos grid */
+.promos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+}
+.promo-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: relative;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+}
+.promo-card:hover {
+    border-color: rgba(220,38,38,0.5);
+    box-shadow: 0 0 18px rgba(220,38,38,0.12);
+}
+.promo-card--hot {
+    border-color: rgba(245,158,11,0.4);
+    background: linear-gradient(135deg, rgba(120,53,15,0.15), var(--bg-card));
+}
+.promo-card--hot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(245,158,11,0.06), transparent 60%);
+    pointer-events: none;
+}
+.promo-card--claimed {
+    opacity: 0.6;
+}
+.promo-card__badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--primary), #b91c1c);
+    color: white;
+    width: fit-content;
+    text-transform: uppercase;
+}
+.promo-card__icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+.promo-card__title {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: white;
+    margin: 0;
+}
+.promo-card__desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin: 0;
+    flex: 1;
+}
+.promo-card__desc strong { color: white; }
+.promo-card__value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.promo-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    margin-top: auto;
+    flex-wrap: wrap;
+}
+.promo-claimed-count {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+}
+.promo-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 1rem;
+    background: linear-gradient(135deg, var(--primary), #b91c1c);
+    border: none;
+    border-radius: var(--radius);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.promo-cta-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220,38,38,0.35);
+    color: white;
+}
+.promo-cta-btn--disabled {
+    background: #1F2937;
+    color: #34D399;
+    cursor: default;
+}
+.promo-cta-btn--disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+</style>
+<script>
+// Mystery Wheel
+(function () {
+    var wheel      = document.getElementById('wheel');
+    var spinBtn    = document.getElementById('spin-btn');
+    var spinning   = false;
+    var currentDeg = 0;           // grade acumulate (mereu crescătoare)
+    var SEG_DEG    = 45;          // grade per segment (360/8)
+    var SPINS      = 7;           // rotații complete înainte de oprire
+
+    window.startSpin = function () {
+        if (spinning || !wheel) return;
+        spinning = true;
+        if (spinBtn) { spinBtn.disabled = true; spinBtn.textContent = '⏳ Se învârte...'; }
+
+        // Fetch server — backend decide segmentul (anti-cheat + logging)
+        fetch('/Promotions/SpinWheel', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': getAntiForgery(), 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.requiresLogin) { window.location.href = '/Account/Login'; return; }
+            if (data.alreadySpun) {
+                spinning = false;
+                if (spinBtn) { spinBtn.disabled = true; spinBtn.className = 'wheel-spin-btn wheel-spin-btn--done'; spinBtn.textContent = '✅ Ai învârtit azi — revino mâine!'; }
+                showWheelModal(false, '✅', 'Deja ai jucat azi!', data.message, null);
+                return;
+            }
+
+            // Calculăm unghiul final: centrul segmentului index trebuie la vârf (0°)
+            var idx     = data.segmentIndex;
+            var center  = idx * SEG_DEG + SEG_DEG / 2;         // unghi centru segment în roată
+            // Aducem centrul la 0° (pointer sus): rotație = 360 - center
+            var desiredMod = (360 - center + 360) % 360;
+            var finalDeg   = (Math.floor(currentDeg / 360) + SPINS) * 360 + desiredMod;
+            if (finalDeg <= currentDeg) finalDeg += 360;
+
+            // Animăm CSS
+            wheel.style.transition = 'transform 4s cubic-bezier(0.17,0.67,0.12,0.99)';
+            wheel.style.transform  = 'rotate(' + finalDeg + 'deg)';
+            currentDeg = finalDeg;
+
+            // Rezultat după animație
+            setTimeout(function () {
+                spinning = false;
+                showResult(data);
+            }, 4200);
+        })
+        .catch(function () {
+            spinning = false;
+            if (spinBtn) { spinBtn.disabled = false; spinBtn.textContent = '🎡 ÎNVÂRTE ACUM!'; }
+        });
+    };
+
+    function showResult(data) {
+        if (spinBtn) { spinBtn.className = 'wheel-spin-btn wheel-spin-btn--done'; spinBtn.disabled = true; spinBtn.textContent = '✅ Ai învârtit azi — revino mâine!'; }
+        var hint = document.getElementById('wheel-hint');
+
+        if (data.isNearMiss) {
+            // Near-miss — recompensă 0 dar formulare "aproape" pentru a stimula revenirea
+            if (hint) hint.innerHTML = '😬 <strong style="color:#FCA5A5;">Aproape!</strong> Mâine cu siguranță câștigi!';
+            showWheelModal(false, '😬', 'Aproape!',
+                'N-ai câștigat azi, dar ai <strong>aproape ajuns</strong> la segment câștigător. <br>Revino mâine — roata îți pregătește ceva special!', null);
+        } else {
+            if (hint) hint.innerHTML = '🎉 Ai câștigat <strong style="color:#FCD34D;">' + escHtml(data.label) + '</strong>! Creditat instant.';
+            var balText = data.newBalance != null
+                ? 'Sold nou: <strong>' + Number(data.newBalance).toFixed(2) + ' RON</strong>'
+                : null;
+            showWheelModal(true, '🎉', 'Felicitări!',
+                'Ai câștigat <strong style="color:#FCD34D;font-size:1.4rem;">' + escHtml(data.label) + '</strong><br>Suma a fost creditată instant în contul tău!',
+                balText);
+        }
+        // Logăm și client-side pentru consistență
+        if (window.ethLog) window.ethLog('WheelSpinResult', 'Promotions',
+            { segmentIndex: data.segmentIndex, amount: data.amount });
+    }
+
+    window.showWheelModal = function (isWin, icon, title, body, balance) {
+        document.getElementById('wm-icon').textContent  = icon;
+        document.getElementById('wm-title').textContent = title;
+        document.getElementById('wm-body').innerHTML    = body;
+        var bal = document.getElementById('wm-balance');
+        if (balance && bal) { bal.innerHTML = balance; bal.style.display = 'block'; }
+        else if (bal) bal.style.display = 'none';
+        var m = document.getElementById('wheel-modal');
+        if (m) m.style.display = 'flex';
+    };
+
+    window.closeWheelModal = function () {
+        var m = document.getElementById('wheel-modal');
+        if (m) m.style.display = 'none';
+    };
+
+    function getAntiForgery() {
+        var t = document.querySelector('input[name="__RequestVerificationToken"]');
+        return t ? t.value : '';
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+})();
+
+// Countdown timer fals — resetează la 24h
+(function () {
+    var key = 'dark_promo_end';
+    var end = sessionStorage.getItem(key);
+    if (!end) {
+        var tomorrow = new Date();
+        tomorrow.setHours(23, 59, 59, 0);
+        end = tomorrow.getTime();
+        sessionStorage.setItem(key, end);
+    }
+    function update() {
+        var r = Math.max(0, end - Date.now());
+        var h = Math.floor(r / 3600000);
+        var m = Math.floor((r % 3600000) / 60000);
+        var s = Math.floor((r % 60000) / 1000);
+        var el = document.getElementById('promo-timer');
+        if (el) el.textContent =
+            String(h).padStart(2,'0') + ':' +
+            String(m).padStart(2,'0') + ':' +
+            String(s).padStart(2,'0');
+        if (r > 0) setTimeout(update, 1000);
+    }
+    update();
+})();
+</script>
+}

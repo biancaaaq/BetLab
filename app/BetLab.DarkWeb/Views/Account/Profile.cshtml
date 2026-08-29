@@ -1,0 +1,273 @@
+@model BetLab.DarkWeb.Models.ProfilePageViewModel
+@{
+    ViewData["Title"] = "Profilul meu";
+    var balance = Model.WalletInfo?.Balance ?? 0;
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">👤 Profilul meu</h1>
+</div>
+
+<!-- Hero sold + VIP -->
+<div class="dark-panel mb-4" style="background:linear-gradient(135deg,#0D1A0D,#161616);border-color:#065F46;">
+    <div class="dark-panel-body" style="padding:2rem;">
+        <div class="row g-4 align-items-center">
+            <div class="col-md-5 text-center text-md-start">
+                <div style="font-size:0.78rem;color:#6EE7B7;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">
+                    Sold disponibil
+                </div>
+                <div style="font-size:3rem;font-weight:900;color:#34D399;line-height:1;">
+                    @balance.ToString("F2") <span style="font-size:1.2rem;font-weight:700;">RON</span>
+                </div>
+                <div style="font-size:0.82rem;color:#6EE7B7;margin-top:0.4rem;">Fonduri gata de utilizat</div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="font-size:0.78rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">
+                    Nivel VIP
+                </div>
+                <div style="font-size:1.8rem;font-weight:900;color:var(--gold);">🥉 Bronze</div>
+                <div style="margin-top:0.5rem;">
+                    <div style="background:#1A1A1A;border-radius:999px;height:6px;overflow:hidden;">
+                        <div style="background:var(--gold);width:35%;height:100%;border-radius:999px;"></div>
+                    </div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;">320 RON până la Silver</div>
+                </div>
+            </div>
+            <div class="col-md-3 text-center">
+                <div style="font-size:0.78rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">
+                    Status
+                </div>
+                <div style="font-size:1.3rem;font-weight:800;color:white;">✅ Activ</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">Cont verificat</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Urgency VIP -->
+<div class="dark-urgency-bar mb-4">
+    🎯 Ești la <strong style="color:white;margin:0 0.3rem;">320 RON</strong> distanță de nivelul
+    <strong style="color:var(--gold);margin-left:0.2rem;">🥈 Silver</strong> — beneficii exclusive și cashback sporit!
+</div>
+
+<!-- Date cont -->
+<div class="dark-panel mb-4">
+    <div class="dark-panel-header">👤 Datele contului</div>
+    <div class="dark-panel-body">
+        @if (Model.User != null)
+        {
+            <div class="row g-3" style="font-size:0.875rem;">
+                <div class="col-sm-6">
+                    <div class="dark-stat-label">Email</div>
+                    <div style="color:white;font-weight:600;margin-top:0.2rem;">@Model.User.Email</div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="dark-stat-label">Username</div>
+                    <div style="color:white;font-weight:600;margin-top:0.2rem;">@Model.User.UserName</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Butoane rapide -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a asp-controller="Events" asp-action="Index" class="btn-dark-primary w-100" style="padding:0.85rem;font-size:0.95rem;display:block;text-align:center;">
+            🔥 PARIURI SPORTIVE
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a asp-controller="Casino" asp-action="Index" class="btn-dark-gold btn-dark-primary w-100" style="padding:0.85rem;font-size:0.95rem;display:block;text-align:center;">
+            🎰 CASINO
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a asp-controller="Account" asp-action="Deposit" class="btn-dark-primary w-100" style="padding:0.85rem;font-size:0.95rem;display:block;text-align:center;background:linear-gradient(135deg,#065F46,#0D1A0D);border-color:#065F46;">
+            💳 DEPUNE
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a asp-controller="MyBets" asp-action="Index" class="btn-dark-primary w-100" style="padding:0.85rem;font-size:0.95rem;display:block;text-align:center;background:#1A1A1A;border:1px solid var(--border);">
+            🎯 BILETELE MELE
+        </a>
+    </div>
+</div>
+
+<!-- Retragere link -->
+<div style="text-align:center;margin-bottom:1rem;">
+    <a asp-controller="Account" asp-action="Withdraw"
+       style="font-size:0.78rem;color:#4B5563;text-decoration:underline;">
+        Solicită retragere fonduri
+    </a>
+</div>
+
+@if (TempData["SelfExcludeError"] != null)
+{
+    <div class="dark-alert dark-alert-danger mt-3" style="font-size:0.85rem;">
+        ⚠️ @TempData["SelfExcludeError"]
+    </div>
+}
+
+<!-- Responsible gambling îngropat (dark pattern moderat: greu de găsit, multiple confirmări, FOMO, deflectare) -->
+<details style="margin-top:2rem;">
+    <summary style="font-size:0.75rem;color:var(--text-dim);cursor:pointer;list-style:none;display:flex;align-items:center;gap:0.4rem;">
+        <span>▶</span> Setări cont avansat
+    </summary>
+
+    <div style="margin-top:1rem;padding:1.25rem;background:#111;border:1px solid #1F1F1F;border-radius:var(--radius);">
+
+        <!-- Pas 1: deflectare către limite în loc de auto-excludere -->
+        <div style="background:linear-gradient(135deg,#78350f,#1a0a00);border:1px solid rgba(245,158,11,0.4);
+                    border-radius:var(--radius);padding:0.85rem 1rem;margin-bottom:1.25rem;">
+            <div style="font-size:0.8rem;color:#FCD34D;font-weight:700;margin-bottom:0.3rem;">
+                💡 Înainte de a continua...
+            </div>
+            <div style="font-size:0.78rem;color:#FBBF24;line-height:1.5;margin-bottom:0.6rem;">
+                Mulți jucători preferă să-și seteze limite de depunere în loc de auto-excludere completă.
+                Astfel îți păstrezi contul activ și poți reveni oricând.
+            </div>
+            <a href="mailto:support@betlab.ro?subject=Limite%20depunere"
+               style="display:inline-block;font-size:0.75rem;color:#FCD34D;background:rgba(245,158,11,0.15);
+                      padding:0.3rem 0.7rem;border-radius:4px;text-decoration:none;">
+                Setează limite de depunere →
+            </a>
+        </div>
+
+        <!-- Pas 2: descriere auto-excludere permanentă cu FOMO -->
+        <p style="font-size:0.78rem;color:var(--text);line-height:1.6;margin-bottom:0.8rem;">
+            <strong>Auto-excludere permanentă</strong> — îți blochează definitiv contul.
+            Nu vei mai putea plasa pariuri sau juca cazinou pe această platformă.
+        </p>
+        <div style="background:#1F1F1F;border-left:3px solid #DC2626;padding:0.65rem 0.85rem;margin-bottom:1rem;
+                    font-size:0.72rem;color:#FCA5A5;line-height:1.5;">
+            ⚠️ <strong>Atenție:</strong> Decizia este <strong>permanentă și irevocabilă</strong>. Bonusurile active vor fi pierdute,
+            CNP-ul tău va fi înregistrat în Registrul de Autoexcludere și nu vei putea crea un cont nou.
+        </div>
+
+        <!-- Formular permanent only -->
+        <form asp-action="SelfExclude" method="post"
+              onsubmit="return confirmDarkSelfExclude(this)"
+              style="margin-bottom:0.5rem;">
+
+            <input type="hidden" name="duration" value="permanent" />
+
+            <label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.72rem;color:var(--text-muted);
+                          cursor:pointer;margin-bottom:0.8rem;line-height:1.4;">
+                <input type="checkbox" name="confirmFinal" value="true" required
+                       style="margin-top:0.15rem;flex-shrink:0;" />
+                <span>
+                    Confirm că înțeleg că <strong>excluderea este permanentă</strong>, voi pierde bonusurile active
+                    și nu voi putea crea un cont nou cu același CNP.
+                </span>
+            </label>
+
+            <button type="submit"
+                    style="background:transparent;border:1px solid #4B5563;color:#9CA3AF;
+                           font-size:0.78rem;padding:0.5rem 1rem;border-radius:4px;cursor:pointer;width:100%;
+                           transition:all 0.15s;"
+                    onmouseover="this.style.borderColor='#DC2626';this.style.color='#FCA5A5'"
+                    onmouseout="this.style.borderColor='#4B5563';this.style.color='#9CA3AF'">
+                Solicită auto-excludere permanentă
+            </button>
+        </form>
+
+        <p style="font-size:0.7rem;color:var(--text-dim);margin-top:0.75rem;line-height:1.5;">
+            Pentru suport în adicție: <a href="https://www.jocresponsabil.ro" target="_blank" rel="noopener"
+                                          style="color:#6B7280;">Asociația Joc Responsabil</a>
+            · Telverde gratuit: <strong>0800 800 099</strong>
+        </p>
+    </div>
+</details>
+
+<!-- 
+     DARK PATTERN: CONFIRMSHAMING la auto-excludere
+     Academic ref: Brignull (2018) "Confirmshaming" — textul butonului
+     de declinare induce rușine/vinovăție. 
+     Butonul principal/proeminent duce ÎNAPOI (stay), cel dezactivat = excludere.
+     -->
+<div id="cse-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);
+     z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#111;border:2px solid #F59E0B;border-radius:14px;padding:2rem;
+                max-width:420px;width:90%;box-shadow:0 0 60px rgba(245,158,11,0.2);">
+        <!-- Iconiță urgență -->
+        <div style="text-align:center;font-size:3rem;line-height:1;margin-bottom:0.75rem;">⚠️🎁</div>
+
+        <!-- Titlu confirmshaming — FOMO maxim -->
+        <div style="font-size:1.15rem;font-weight:900;color:white;text-align:center;
+                    margin-bottom:0.75rem;line-height:1.3;">
+            Sigur vrei să <span style="color:#DC2626;text-transform:uppercase;">RATEZI</span><br>
+            200 de rotiri gratuite?
+        </div>
+
+        <!-- Corp — lista cu ce pierzi -->
+        <div style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);
+                    border-radius:8px;padding:0.85rem 1rem;margin-bottom:1.25rem;
+                    font-size:0.82rem;color:#FCA5A5;line-height:1.6;">
+            Dacă te autoexcluzi acum, <strong style="color:white;">pierzi imediat:</strong>
+            <ul style="margin:0.4rem 0 0 1rem;padding:0;color:#FCA5A5;">
+                <li>🎰 <strong>200 rotiri gratuite</strong> rezervate pentru tine</li>
+                <li>🎁 Bonusurile active în cont</li>
+                <li>🥉 Statutul <strong style="color:#F59E0B;">VIP Bronze</strong> și progresul spre Silver</li>
+                <li>💰 Cashback-ul săptămânal activ</li>
+            </ul>
+        </div>
+
+        <!-- Butoane — confirmshaming: cel PROEMINENT duce înapoi -->
+        <div style="display:flex;flex-direction:column;gap:0.65rem;">
+            <!-- Buton principal — RĂMÂI (acțiunea sigură/usoară) -->
+            <button onclick="cancelDarkSelfExclude()"
+                    style="background:linear-gradient(135deg,#065F46,#047857);color:white;border:none;
+                           border-radius:8px;padding:0.85rem;font-size:0.95rem;font-weight:900;
+                           cursor:pointer;width:100%;letter-spacing:0.01em;">
+                Nu, vreau să rămân activ și să-mi păstrez bonusurile! 🎁
+            </button>
+
+            <!-- Buton secundar — CONFIRMSHAMING: "prefer să pierd" -->
+            <button onclick="proceedDarkSelfExclude()"
+                    style="background:transparent;border:1px solid #374151;color:#6B7280;
+                           border-radius:8px;padding:0.55rem;font-size:0.72rem;font-weight:600;
+                           cursor:pointer;width:100%;letter-spacing:0.01em;
+                           transition:color 0.15s,border-color 0.15s;"
+                    onmouseover="this.style.color='#9CA3AF';this.style.borderColor='#4B5563'"
+                    onmouseout="this.style.color='#6B7280';this.style.borderColor='#374151'">
+                Nu, prefer să pierd bonusul și rotirile gratuite
+            </button>
+        </div>
+
+        <p style="font-size:0.68rem;color:#374151;text-align:center;margin-top:0.75rem;margin-bottom:0;">
+            Decizia este irevocabilă pentru perioada selectată.
+        </p>
+    </div>
+</div>
+
+<script>
+    var _pendingSelfExcludeForm = null;
+
+    // Dark pattern: validare manuală + modal custom cu confirmshaming în loc de confirm() nativ
+    function confirmDarkSelfExclude(form) {
+        // Verificăm validitatea HTML5 (checkbox-ul required)
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return false;
+        }
+        _pendingSelfExcludeForm = form;
+        document.getElementById('cse-modal').style.display = 'flex';
+        return false;   // prevenim submit-ul implicit; se face via proceedDarkSelfExclude()
+    }
+
+    function proceedDarkSelfExclude() {
+        document.getElementById('cse-modal').style.display = 'none';
+        if (_pendingSelfExcludeForm) {
+            _pendingSelfExcludeForm.submit();
+        }
+    }
+
+    function cancelDarkSelfExclude() {
+        document.getElementById('cse-modal').style.display = 'none';
+        _pendingSelfExcludeForm = null;
+        // Logăm că utilizatorul a ales să rămână (confirmshaming a funcționat)
+        if (window.darkLog) window.darkLog('SelfExcludeCancelled', 'Profile',
+            { reason: 'confirmshaming_modal' });
+    }
+</script>

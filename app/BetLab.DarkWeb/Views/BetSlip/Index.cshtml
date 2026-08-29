@@ -1,0 +1,127 @@
+@model BetLab.DarkWeb.Models.BetSlipViewModel
+@{
+    ViewData["Title"] = "Bilet";
+    var defaultStake = 50m;
+    var potentialWin = Model.TotalOdds > 0 ? Model.TotalOdds * defaultStake : 0;
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">🎯 Biletul tău</h1>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-4">⚠️ @TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="dark-alert dark-alert-success mb-4">
+        ✅ <strong>Pariul a fost plasat! Mult succes!</strong>
+    </div>
+}
+
+@if (!Model.Items.Any())
+{
+    <div class="dark-panel text-center" style="padding:3rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">🎰</div>
+        <div style="color:var(--text-muted);margin-bottom:1.5rem;">
+            Biletul tău este gol. Nu rata cotele de azi!
+        </div>
+        <a asp-controller="Events" asp-action="Index" class="btn-dark-primary">
+            🔥 VEZI MECIURILE
+        </a>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <!-- Selecții -->
+            <div class="dark-panel mb-3">
+                <div class="dark-panel-header">
+                    🎯 Selecțiile tale
+                    <span class="dark-chip dark-chip-red ms-auto">@Model.Items.Count selecții</span>
+                </div>
+                <div>
+                    @foreach (var item in Model.Items)
+                    {
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.2rem;border-bottom:1px solid var(--border);">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:700;font-size:0.9rem;color:white;">@item.EventName</div>
+                                <div style="font-size:0.8rem;color:var(--text-muted);">@item.MarketName · @item.OutcomeName</div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.75rem;flex-shrink:0;">
+                                <span style="font-size:1.1rem;font-weight:900;color:var(--gold);">@item.Odds.ToString("F2")</span>
+                                <form asp-controller="BetSlip" asp-action="Remove" method="post">
+                                    <input type="hidden" name="outcomeId" value="@item.OutcomeId" />
+                                    <button type="submit" style="background:none;border:none;color:#4B5563;font-size:1rem;cursor:pointer;padding:0.2rem 0.4rem;">✕</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <!-- Panou plasare -->
+            <div class="dark-panel">
+                <div class="dark-panel-header dark-panel-header--red">
+                    💰 Câștig potențial
+                </div>
+                <div class="dark-panel-body">
+
+                    <!-- Câștig potențial afișat mare — pierderea e ascunsă -->
+                    <div style="text-align:center;padding:1rem 0 1.5rem;">
+                        <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;">
+                            Câștig potențial
+                        </div>
+                        <div id="potential-display" style="font-size:2.5rem;font-weight:900;color:#34D399;">
+                            @potentialWin.ToString("F2") RON
+                        </div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;">
+                            Cotă totală: <strong style="color:var(--gold);">@Model.TotalOdds.ToString("F2")</strong>
+                        </div>
+                    </div>
+
+                    <!-- Urgency -->
+                    <div class="dark-urgency-bar mb-3" style="font-size:0.82rem;">
+                        ⚡ Cotele se pot schimba! Plasează acum!
+                    </div>
+
+                    <form asp-controller="BetSlip" asp-action="Place" method="post">
+                        <label class="form-label-dark">Miză (RON)</label>
+                        <input type="number" step="0.50" min="1" name="stake" id="stake-input"
+                               class="form-control-dark mb-3"
+                               value="50" required
+                               oninput="updatePotential(this.value)" />
+
+                        <button type="submit" class="btn-dark-primary pulse w-100" style="font-size:1rem;padding:0.85rem;">
+                            🎯 PARIAZĂ ACUM
+                        </button>
+                    </form>
+
+                    <form asp-controller="BetSlip" asp-action="Clear" method="post" class="mt-2">
+                        <button type="submit" class="btn-dark-secondary w-100" style="font-size:0.8rem;opacity:0.5;">
+                            Golește biletul
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+var totalOdds = @Model.TotalOdds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+
+function updatePotential(stake) {
+    var val = parseFloat(stake) || 0;
+    var potential = (val * totalOdds).toFixed(2);
+    document.getElementById('potential-display').textContent = potential + ' RON';
+}
+</script>
+}

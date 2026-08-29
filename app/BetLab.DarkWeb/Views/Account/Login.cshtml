@@ -1,0 +1,79 @@
+@model BetLab.DarkWeb.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Autentificare";
+}
+
+<div style="min-height:80vh;display:flex;align-items:center;justify-content:center;">
+    <div style="width:100%;max-width:420px;">
+
+        <!-- Fake bonus banner -->
+        <div class="dark-urgency-bar mb-4" style="justify-content:center;text-align:center;">
+            🎁 BONUS 200% pentru primii 50 de utilizatori ai zilei!
+            <span class="timer" id="bonus-timer">09:47</span> rămase
+        </div>
+
+        <div class="dark-panel">
+            <div class="dark-panel-header dark-panel-header--red" style="justify-content:center;font-size:1rem;">
+                🔐 INTRĂ ÎN CONT
+            </div>
+            <div class="dark-panel-body">
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="dark-alert dark-alert-danger">⚠️ @ViewBag.Error</div>
+                }
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label-dark">Email</label>
+                        <input asp-for="Email" class="form-control-dark" placeholder="email@exemplu.ro" />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label-dark">Parolă</label>
+                        <input asp-for="Password" type="password" class="form-control-dark" placeholder="••••••••" />
+                    </div>
+                    <button type="submit" class="btn-dark-primary pulse w-100" style="font-size:1rem;padding:0.9rem;">
+                        INTRĂ ȘI CÂȘTIGĂ
+                    </button>
+                </form>
+
+                <div style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:var(--text-muted);">
+                    Nu ai cont?
+                    <a asp-controller="Account" asp-action="Register" style="color:var(--primary-bright);font-weight:700;">
+                        Creează acum și primești bonus!
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Social proof fake -->
+        <div style="text-align:center;margin-top:1rem;font-size:0.78rem;color:var(--text-dim);">
+            <span class="dark-live-dot" style="display:inline-block;margin-right:0.3rem;"></span>
+            <span id="login-count">1.247</span> utilizatori conectați acum
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function(){
+    var secs = 587;
+    function tick(){
+        var m=Math.floor(secs/60), s=secs%60;
+        var el=document.getElementById('bonus-timer');
+        if(el) el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+        if(secs>0){secs--;setTimeout(tick,1000);}
+        else{secs=587;setTimeout(tick,1000);}
+    }
+    tick();
+
+    var base=1247;
+    setInterval(function(){
+        base+=Math.floor(Math.random()*9)-3;
+        if(base<900)base=950;
+        var el=document.getElementById('login-count');
+        if(el) el.textContent=base.toLocaleString('ro-RO');
+    },4000);
+})();
+</script>
+}

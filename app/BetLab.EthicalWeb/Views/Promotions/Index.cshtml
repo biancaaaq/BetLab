@@ -1,0 +1,260 @@
+@{
+    ViewData["Title"] = "Promoții";
+
+    var hasToken  = !string.IsNullOrWhiteSpace(Context.Session.GetString("Ethical_JwtToken"));
+    var userIdStr = Context.Session.GetString("Ethical_CurrentUserId") ?? "";
+    var dailyKey  = $"Ethical_DailyReward_{DateTime.UtcNow:yyyyMMdd}_{userIdStr}";
+    var dailyClaimed = Context.Session.GetString(dailyKey) == "claimed";
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">Promoții disponibile</h1>
+        <p class="eth-page-subtitle">
+            Bonusurile sunt afișate cu condiții complete. Fără rulaj ascuns, fără termen de expirare artificial.
+        </p>
+    </div>
+</div>
+
+<!-- Notice transparență -->
+<div class="alert alert-info mb-4" style="align-items:flex-start;">
+    <i data-lucide="info"></i>
+    <div>
+        <strong style="display:block;margin-bottom:0.3rem;">De ce sunt promoțiile noastre diferite</strong>
+        <div style="font-size:0.88rem;line-height:1.6;">
+            Bookmakerii folosesc adesea bonusuri pentru a ascunde condiții restrictive (rulaj 30x, termen 24h, etc.).
+            La BetLab afișăm fiecare promoție cu <strong>toate condițiile la vedere</strong>: cât trebuie să rulezi,
+            când expiră, cum se acordă. Niciodată nu îți cerem să depui mai mult ca să "deblochezi" un bonus.
+        </div>
+    </div>
+</div>
+
+@if (TempData["PromoSuccess"] != null)
+{
+    <div class="alert alert-success mb-4">
+        <i data-lucide="check-circle"></i>
+        <div>@TempData["PromoSuccess"]</div>
+    </div>
+}
+@if (TempData["PromoError"] != null)
+{
+    <div class="alert alert-warning mb-4">
+        <i data-lucide="info"></i>
+        <div>@TempData["PromoError"]</div>
+    </div>
+}
+
+
+<div class="ethical-panel mb-4" style="border-left: 4px solid var(--primary);">
+    <div class="ethical-panel-header">
+        <div class="ethical-panel-title">
+            <i data-lucide="calendar-check"></i>
+            <span>Bonus zilnic fix</span>
+        </div>
+        <span class="rtp-badge">Disponibil zilnic</span>
+    </div>
+    <div class="row align-items-center g-3">
+        <div class="col-md-8">
+            <p class="mb-2" style="font-size:1.05rem;font-weight:700;color:var(--text-strong);">
+                5 RON demo — același lucru în fiecare zi
+            </p>
+            <div class="ethical-muted mb-0" style="font-size:0.88rem;line-height:1.6;">
+                Primești exact <strong>5 RON</strong> o dată pe zi, fără condiții. Suma este identică
+                întotdeauna — nu există surprize, jackpoturi sau "rotiri" misterioase. Știi dinainte
+                exact ce primești: transparență completă.
+            </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+            @if (!hasToken)
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary">
+                    <i data-lucide="log-in"></i>
+                    <span>Autentifică-te</span>
+                </a>
+            }
+            else if (dailyClaimed)
+            {
+                <span class="btn btn-outline-secondary" style="cursor:default;opacity:0.7;">
+                    <i data-lucide="check-circle"></i>
+                    <span>Revendicat azi ✔</span>
+                </span>
+                <div class="ethical-muted mt-2" style="font-size:0.78rem;">Revino mâine pentru încă 5 RON.</div>
+            }
+            else
+            {
+                <form asp-controller="Promotions" asp-action="ClaimDailyReward" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="gift"></i>
+                        <span>Revendică 5 RON</span>
+                    </button>
+                </form>
+                <div class="ethical-muted mt-2" style="font-size:0.78rem;">Fără rulaj. Fără condiții ascunse.</div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-header">
+                <div class="ethical-panel-title">
+                    <i data-lucide="gift"></i>
+                    <span>Bonus de bun venit</span>
+                </div>
+                <span class="rtp-badge">Cont nou</span>
+            </div>
+            <p class="mb-3" style="font-size:1.05rem;font-weight:700;color:var(--text-strong);">
+                50% din prima depunere, până la 100 RON
+            </p>
+            <div class="ethical-muted mb-3" style="font-size:0.88rem;line-height:1.6;">
+                Faci prima depunere de minim 50 RON și primești 50% bonus instant. Ex: depui 100 RON → primești 50 RON bonus = sold total 150 RON.
+            </div>
+
+            <div style="background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1rem;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.5rem;">
+                    Condiții complete
+                </div>
+                <ul style="font-size:0.82rem;color:var(--muted);margin:0;padding-left:1.2rem;line-height:1.7;">
+                    <li>Disponibil <strong>30 de zile</strong> de la crearea contului</li>
+                    <li>Rulaj <strong>1x</strong> (transparent: dacă primești 50 RON bonus, trebuie să pariezi cel puțin 50 RON înainte de retragere)</li>
+                    <li>Se aplică pe orice tip de pariu (1X2, BTTS, Over/Under)</li>
+                    <li><strong>Niciun</strong> termen ascuns. Pierderile NU se deduc întâi din bonus.</li>
+                </ul>
+            </div>
+
+            <a asp-controller="Account" asp-action="Deposit" class="btn btn-primary w-100 justify-content-center">
+                <i data-lucide="arrow-right"></i>
+                <span>Mergi la depunere</span>
+            </a>
+        </div>
+    </div>
+
+   
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-header">
+                <div class="ethical-panel-title">
+                    <i data-lucide="refresh-ccw"></i>
+                    <span>Cashback săptămânal</span>
+                </div>
+                <span class="rtp-badge">Toți utilizatorii</span>
+            </div>
+            <p class="mb-3" style="font-size:1.05rem;font-weight:700;color:var(--text-strong);">
+                10% din pierderea netă, până la 50 RON / săptămână
+            </p>
+            <div class="ethical-muted mb-3" style="font-size:0.88rem;line-height:1.6;">
+                Dacă într-o săptămână ai pierderi nete (pariat mai mult decât ai câștigat), primești înapoi 10% luni dimineața. Fără rulaj — banii sunt direct retrageriabili.
+            </div>
+
+            <div style="background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1rem;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.5rem;">
+                    Condiții complete
+                </div>
+                <ul style="font-size:0.82rem;color:var(--muted);margin:0;padding-left:1.2rem;line-height:1.7;">
+                    <li>Calculat pe pariuri plasate Luni 00:00 – Duminică 23:59</li>
+                    <li>Cashback maxim: 50 RON / săptămână</li>
+                    <li><strong>Fără rulaj</strong> — bani retrageriabili imediat</li>
+                    <li>Plata se face automat Luni la 09:00</li>
+                </ul>
+            </div>
+
+            <a asp-controller="Activity" asp-action="Index" class="btn btn-outline-primary w-100 justify-content-center">
+                <i data-lucide="bar-chart-2"></i>
+                <span>Vezi activitatea ta</span>
+            </a>
+        </div>
+    </div>
+
+    
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-header">
+                <div class="ethical-panel-title">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Free Bet la primul pariu</span>
+                </div>
+                <span class="rtp-badge">Doar cont nou</span>
+            </div>
+            <p class="mb-3" style="font-size:1.05rem;font-weight:700;color:var(--text-strong);">
+                Primul pariu pierde? Primești 50% înapoi ca free bet
+            </p>
+            <div class="ethical-muted mb-3" style="font-size:0.88rem;line-height:1.6;">
+                Dacă primul pariu plasat după înregistrare e pierzător, primești 50% din miză ca free bet. Ex: pariezi 20 RON, pierzi → primești 10 RON free bet.
+            </div>
+
+            <div style="background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1rem;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.5rem;">
+                    Condiții complete
+                </div>
+                <ul style="font-size:0.82rem;color:var(--muted);margin:0;padding-left:1.2rem;line-height:1.7;">
+                    <li>Primul pariu cu miza între 10 și 100 RON</li>
+                    <li>Free bet valabil <strong>7 zile</strong> de la acordare</li>
+                    <li>Se aplică pe cote minim 1.50</li>
+                    <li>Câștigul din free bet = câștig net, fără rulaj</li>
+                </ul>
+            </div>
+
+            <a asp-controller="Events" asp-action="Index" class="btn btn-outline-primary w-100 justify-content-center">
+                <i data-lucide="trophy"></i>
+                <span>Mergi la meciuri</span>
+            </a>
+        </div>
+    </div>
+
+    
+    <div class="col-md-6">
+        <div class="ethical-panel h-100">
+            <div class="ethical-panel-header">
+                <div class="ethical-panel-title">
+                    <i data-lucide="rotate-ccw"></i>
+                    <span>Demo Reset săptămânal</span>
+                </div>
+                <span class="rtp-badge">Cont demo</span>
+            </div>
+            <p class="mb-3" style="font-size:1.05rem;font-weight:700;color:var(--text-strong);">
+                Resetează soldul demo la 100 RON
+            </p>
+            <div class="ethical-muted mb-3" style="font-size:0.88rem;line-height:1.6;">
+                Această platformă folosește exclusiv fonduri demonstrative. Dacă ai cheltuit soldul inițial, poți cere o resetare la 100 RON o dată pe săptămână.
+            </div>
+
+            <div style="background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1rem;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.5rem;">
+                    Condiții complete
+                </div>
+                <ul style="font-size:0.82rem;color:var(--muted);margin:0;padding-left:1.2rem;line-height:1.7;">
+                    <li>Disponibil o dată la 7 zile</li>
+                    <li>Aducerea la sold inițial: 100 RON</li>
+                    <li>Bilete deja plasate rămân active</li>
+                    <li>Nu există obligație — folosește dacă vrei</li>
+                </ul>
+            </div>
+
+            <a asp-controller="Account" asp-action="Profile" class="btn btn-outline-primary w-100 justify-content-center">
+                <i data-lucide="user"></i>
+                <span>Mergi la profil</span>
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<!-- Notice etic la final -->
+<div class="ethical-panel mt-4" style="border-left:4px solid #DC2626;background:#FEF2F2;">
+    <div class="ethical-panel-title mb-2" style="color:#991B1B;">
+        <i data-lucide="alert-triangle"></i>
+        <span>Joacă responsabil</span>
+    </div>
+    <p style="font-size:0.9rem;line-height:1.6;margin-bottom:0.5rem;color:#7F1D1D;">
+        Promoțiile nu garantează câștiguri. Bookmakerul are întotdeauna avantajul matematic prin marja casei.
+        Pariază doar sume pe care îți permiți să le pierzi.
+    </p>
+    <p style="font-size:0.85rem;line-height:1.6;margin-bottom:0;color:#991B1B;">
+        Dacă jocul îți afectează viața: <strong>Telverde 0800 800 099</strong> (Promis,
+        Asociația Joc Responsabil) — apel gratuit. Sau folosește
+        <a asp-controller="Account" asp-action="Profile" style="color:#991B1B;font-weight:700;">limitele și auto-excluderea din profil</a>.
+    </p>
+</div>

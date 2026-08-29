@@ -1,0 +1,160 @@
+@{
+    ViewData["Title"] = "Depunere fonduri demo";
+}
+
+<h1 class="mb-1">Depunere fonduri demo</h1>
+<p class="ethical-muted mb-4">
+    Adaugă fonduri demonstrative în contul tău. Aceste fonduri nu sunt bani reali și nu pot fi retrase.
+</p>
+
+@if (TempData["DepositSuccess"] != null)
+{
+    <div class="alert alert-success mb-4">
+        <i data-lucide="check-circle"></i>
+        <div>
+            <strong>@TempData["DepositSuccess"]</strong>
+        </div>
+    </div>
+}
+@if (TempData["DepositError"] != null)
+{
+    <div class="alert alert-danger mb-4">
+        <i data-lucide="alert-circle"></i>
+        <div>@TempData["DepositError"]</div>
+    </div>
+}
+
+<div class="row g-4 justify-content-center">
+    <div class="col-lg-6">
+
+        <!-- Info demo -->
+        <div class="alert" style="background:var(--info-soft,#EFF6FF);border:1px solid #BFDBFE;color:#1E40AF;border-radius:var(--radius,8px);display:flex;align-items:flex-start;gap:0.75rem;padding:1rem 1.25rem;margin-bottom:1.5rem;">
+            <i data-lucide="info" style="flex-shrink:0;margin-top:0.1rem;width:18px;height:18px;"></i>
+            <div style="font-size:0.88rem;line-height:1.6;">
+                Aceasta este o platformă de cercetare care folosește exclusiv <strong>fonduri demonstrative</strong>.
+                Nicio sumă depusă sau retrasă nu implică bani reali.
+            </div>
+        </div>
+
+        @if (ViewBag.DailyDepositLimit != null)
+        {
+            decimal limit      = (decimal)ViewBag.DailyDepositLimit;
+            decimal deposited  = (decimal)(ViewBag.TodayDeposited ?? 0m);
+            decimal remaining  = Math.Max(0, limit - deposited);
+            double  pct        = limit > 0 ? Math.Min(100, (double)(deposited / limit * 100)) : 0;
+            var     barColor   = pct >= 100 ? "#DC2626" : pct >= 75 ? "#F59E0B" : "var(--primary,#2563EB)";
+            <div class="ethical-panel mb-4" style="border-left:4px solid @barColor;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+                    <span style="font-size:0.85rem;font-weight:600;">
+                        <i data-lucide="shield" style="width:14px;height:14px;vertical-align:middle;"></i>
+                        Limita zilnică de depunere
+                    </span>
+                    <span style="font-size:0.85rem;font-weight:700;color:@barColor;">
+                        @deposited.ToString("F0") / @limit.ToString("F0") RON
+                    </span>
+                </div>
+                <div style="background:#E5E7EB;border-radius:999px;height:8px;overflow:hidden;">
+                    <div style="width:@pct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;
+                                height:100%;background:@barColor;border-radius:999px;transition:width 0.3s;"></div>
+                </div>
+                @if (remaining > 0)
+                {
+                    <div class="ethical-muted" style="font-size:0.78rem;margin-top:0.4rem;">
+                        Mai poți depune <strong>@remaining.ToString("F0") RON</strong> azi.
+                    </div>
+                }
+                else
+                {
+                    <div style="font-size:0.78rem;margin-top:0.4rem;color:#DC2626;font-weight:600;">
+                        Limita zilnică atinsă. Se resetează la miezul nopții (UTC).
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Formular depunere -->
+        <div class="ethical-panel mb-4">
+            <div class="ethical-panel-header">
+                <div class="ethical-panel-title">
+                    <i data-lucide="wallet"></i>
+                    <span>Sumă de depus</span>
+                </div>
+            </div>
+
+            <form asp-action="Deposit" method="post">
+
+                <!-- Sume rapide -->
+                <div style="margin-bottom:1.25rem;">
+                    <label class="form-label">Selectează sau introdu o sumă</label>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:0.75rem;">
+                        @foreach (var amt in new[] { 50, 100, 200, 500 })
+                        {
+                            <button type="button" onclick="setAmount(@amt)"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    data-quick="@amt">
+                                @amt RON
+                            </button>
+                        }
+                    </div>
+                    <div class="input-group">
+                        <input type="number" name="amount" id="deposit-amount"
+                               min="10" max="50000" step="10"
+                               class="form-control" value="100" required
+                               oninput="syncPreview(this.value)" />
+                        <span class="input-group-text">RON</span>
+                    </div>
+                    <div class="form-text">Suma minimă: 10 RON · Suma maximă: 50.000 RON</div>
+                </div>
+
+                <!-- Preview simplu -->
+                <div style="background:var(--bg-soft,#F9FAFB);border:1px solid var(--border,#E5E7EB);border-radius:var(--radius,8px);padding:0.85rem 1rem;margin-bottom:1.25rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="ethical-muted" style="font-size:0.85rem;">Vei adăuga în cont</span>
+                        <span id="preview-amount" style="font-size:1.2rem;font-weight:700;color:var(--primary);">100,00 RON</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100" style="padding:0.75rem;font-size:1rem;">
+                    <i data-lucide="plus-circle"></i>
+                    <span>Adaugă fonduri</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Retragere link -->
+        <div style="text-align:center;">
+            <a asp-controller="Account" asp-action="Withdraw" class="ethical-muted" style="font-size:0.85rem;">
+                <i data-lucide="arrow-left-right" style="width:14px;height:14px;vertical-align:middle;"></i>
+                Solicită retragere fonduri
+            </a>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function setAmount(amt) {
+    document.getElementById('deposit-amount').value = amt;
+    syncPreview(amt);
+    document.querySelectorAll('[data-quick]').forEach(function(b) {
+        b.classList.toggle('btn-primary', parseInt(b.dataset.quick) === amt);
+        b.classList.toggle('btn-outline-secondary', parseInt(b.dataset.quick) !== amt);
+    });
+}
+
+function syncPreview(val) {
+    var amt = parseFloat(val) || 0;
+    document.getElementById('preview-amount').textContent =
+        amt.toLocaleString('ro-RO', {minimumFractionDigits:2}) + ' RON';
+    document.querySelectorAll('[data-quick]').forEach(function(b) {
+        var match = parseFloat(b.dataset.quick) === amt;
+        b.classList.toggle('btn-primary', match);
+        b.classList.toggle('btn-outline-secondary', !match);
+    });
+}
+
+// Selectează 100 RON implicit
+setAmount(100);
+</script>
+}

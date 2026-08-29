@@ -1,0 +1,322 @@
+﻿@model BetLab.EthicalWeb.Models.ProfilePageViewModel
+
+@{
+    ViewData["Title"] = "Profil";
+
+    var isExcluded = Model.Limits?.IsSelfExcludedNow ?? false;
+    var isPermanent = Model.Limits?.IsPermanentlyExcluded ?? false;
+}
+
+<h1 class="mb-1">Profilul meu</h1>
+<p class="ethical-muted mb-4">Gestionează contul, soldul demo și limitele de joc.</p>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success mb-3">
+        <i data-lucide="check-circle"></i>
+        <div>@Model.SuccessMessage</div>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger mb-3">
+        <i data-lucide="alert-circle"></i>
+        <div>@Model.ErrorMessage</div>
+    </div>
+}
+
+@if (isExcluded)
+{
+    <div class="alert alert-warning mb-4">
+        <i data-lucide="shield-off"></i>
+        <div>
+            @if (isPermanent)
+            {
+                <strong>Auto-excludere permanentă activă.</strong>
+                <span>Contul tău este exclus pe durată nedeterminată. Pentru ridicare, contactează suportul.</span>
+            }
+            else
+            {
+                <strong>Auto-excludere permanentă activă.</strong>
+                <span>Contul tău este exclus permanent. Pentru ridicare (justificată), contactează suportul la support@betlab.ro.</span>
+            }
+        </div>
+    </div>
+}
+
+<!-- Wallet card -->
+@if (Model.WalletInfo != null)
+{
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="wallet-card">
+                <div class="wallet-card-label">Sold demo</div>
+                <div class="wallet-card-balance">
+                    @Model.WalletInfo.Balance.ToString("0.##") <span style="font-size:1.1rem;opacity:0.85;">@Model.WalletInfo.Currency</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="ethical-panel h-100 d-flex flex-column justify-content-center">
+                <div class="ethical-muted mb-1" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Cont</div>
+                <div class="mb-2"><strong>@Model.User?.UserName</strong></div>
+                <div class="ethical-muted" style="font-size: 0.92rem;">@Model.User?.Email</div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Depunere / retragere -->
+<div class="d-flex gap-3 mb-4">
+    <a asp-controller="Account" asp-action="Deposit" class="btn btn-primary">
+        <i data-lucide="plus-circle"></i>
+        <span>Depune fonduri</span>
+    </a>
+    <a asp-controller="Account" asp-action="Withdraw" class="btn btn-outline-secondary">
+        <i data-lucide="arrow-left-right"></i>
+        <span>Retragere</span>
+    </a>
+</div>
+
+<!-- Limite -->
+<div class="ethical-panel mb-4">
+    <div class="ethical-panel-header">
+        <div class="ethical-panel-title">
+            <i data-lucide="sliders-horizontal"></i>
+            <span>Limite zilnice</span>
+        </div>
+        <span class="ethical-muted" style="font-size: 0.85rem;">
+            <i data-lucide="info" style="width:14px;height:14px;"></i>
+            Scăderea se aplică imediat · Creșterea după 24h
+        </span>
+    </div>
+
+    @if (isExcluded)
+    {
+        <p class="ethical-muted">Modificarea limitelor este dezactivată pe perioada auto-excluderii.</p>
+    }
+    else
+    {
+        <form asp-action="UpdateLimits" method="post">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i data-lucide="wallet" style="width:14px;height:14px;color:var(--primary);"></i>
+                        Limită zilnică de depunere
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="DailyDepositLimit" class="form-control" step="1" min="0"
+                               value="@(Model.Limits?.DailyDepositLimit?.ToString("0"))"
+                               placeholder="Fără limită" />
+                        <span class="input-group-text">RON / zi</span>
+                    </div>
+                    <div class="form-text">Suma maximă pe care o poți depune într-o zi. Lasă gol = fără limită.</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i data-lucide="trending-down" style="width:14px;height:14px;color:var(--primary);"></i>
+                        Limită zilnică de pierdere
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="DailyLossLimit" class="form-control" step="1" min="0"
+                               value="@(Model.Limits?.DailyLossLimit?.ToString("0"))"
+                               placeholder="Fără limită" />
+                        <span class="input-group-text">RON / zi</span>
+                    </div>
+                    <div class="form-text">Pierderea netă maximă într-o zi după care contul se blochează până a doua zi.</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i data-lucide="hourglass" style="width:14px;height:14px;color:var(--primary);"></i>
+                        Limită zilnică de timp
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="DailySessionMinutesLimit" class="form-control" step="5" min="0"
+                               value="@(Model.Limits?.DailySessionMinutesLimit?.ToString())"
+                               placeholder="Fără limită" />
+                        <span class="input-group-text">minute / zi</span>
+                    </div>
+                    <div class="form-text">Timpul total petrecut în aplicație într-o zi.</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <i data-lucide="bell" style="width:14px;height:14px;color:var(--primary);"></i>
+                        Interval reality check
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="RealityCheckIntervalMinutes" class="form-control" step="5" min="5" max="240"
+                               value="@(Model.Limits?.RealityCheckIntervalMinutes ?? 30)" />
+                        <span class="input-group-text">minute</span>
+                    </div>
+                    <div class="form-text">Cât de des îți afișăm un sumar al sesiunii (între 5 și 240 minute).</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="save"></i>
+                <span>Salvează limitele</span>
+            </button>
+        </form>
+    }
+</div>
+
+<!-- Auto-excludere -->
+@if (!isExcluded)
+{
+   
+    <div class="self-exclusion-box">
+        <div class="self-exclusion-title">
+            <i data-lucide="shield-off"></i>
+            <span>Auto-excludere</span>
+        </div>
+        <p class="ethical-muted mb-3">
+            Dacă simți că ai nevoie să te oprești, te poți auto-exclude permanent. Contul tău va fi blocat definitiv —
+            nu vei mai putea plasa pariuri sau juca la cazinou, iar CNP-ul tău va fi înregistrat în Registrul de Autoexcludere
+            pentru a preveni crearea unui cont nou.
+        </p>
+        <div class="alert alert-warning mb-3" style="font-size:0.85rem;">
+            <i data-lucide="alert-triangle"></i>
+            <div>
+                <strong>Auto-excluderea este permanentă și irevocabilă.</strong>
+                Nu poate fi anulată din aplicație. Dacă ai nevoie de ajutor în luarea acestei decizii,
+                sună la <strong>Telverde 0800 800 099</strong> (Promis, apel gratuit).
+            </div>
+        </div>
+        <form asp-action="SelfExclude" method="post" class="d-inline"
+              onsubmit="return ethConfirmExclude(this)">
+            <input type="hidden" name="duration" value="Permanent" />
+            <button type="submit" class="btn btn-outline-danger">
+                <i data-lucide="ban"></i>
+                <span>Solicită auto-excludere permanentă</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Modal etic neutru — fără presiune, fără FOMO -->
+    <div id="eth-excl-modal" style="display:none;position:fixed;inset:0;
+         background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:1.75rem 1.75rem 1.5rem;
+                    max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
+                <span style="background:#FEF2F2;border-radius:8px;padding:0.4rem;display:flex;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </span>
+                <strong id="eth-modal-title" style="font-size:1rem;color:#111827;">Auto-excludere</strong>
+            </div>
+            <p id="eth-modal-body" style="color:#374151;font-size:0.9rem;line-height:1.6;margin-bottom:1.25rem;">
+                Confirmi auto-excluderea?
+            </p>
+            <!-- Butoane egale — Da / Nu — fără ierarhie vizuală manipulativă -->
+            <div style="display:flex;gap:0.75rem;">
+                <button onclick="cancelEthExclude()"
+                        style="flex:1;padding:0.6rem;background:#fff;color:#374151;
+                               border:1px solid #D1D5DB;border-radius:8px;
+                               font-size:0.9rem;font-weight:600;cursor:pointer;">
+                    Nu
+                </button>
+                <button onclick="proceedEthExclude()"
+                        style="flex:1;padding:0.6rem;background:#2563EB;color:#fff;
+                               border:1px solid #2563EB;border-radius:8px;
+                               font-size:0.9rem;font-weight:600;cursor:pointer;">
+                    Da
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var _ethPendingForm = null;
+
+        function ethConfirmExclude(form) {
+            _ethPendingForm = form;
+            document.getElementById('eth-modal-title').textContent = 'Auto-excludere permanentă';
+            document.getElementById('eth-modal-body').textContent  =
+                'Excluderea este permanentă și nu poate fi anulată din aplicație. CNP-ul tău va fi înregistrat în Registrul de Autoexcludere. Confirmi?';
+            document.getElementById('eth-excl-modal').style.display = 'flex';
+            return false;
+        }
+
+        function proceedEthExclude() {
+            document.getElementById('eth-excl-modal').style.display = 'none';
+            if (_ethPendingForm) _ethPendingForm.submit();
+        }
+
+        function cancelEthExclude() {
+            document.getElementById('eth-excl-modal').style.display = 'none';
+            _ethPendingForm = null;
+        }
+    </script>
+}
+
+<!-- Detalii cont -->
+<div class="ethical-panel mt-4">
+    <div class="ethical-panel-title mb-3">
+        <i data-lucide="user"></i>
+        <span>Detalii cont</span>
+    </div>
+    @if (Model.User != null)
+    {
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="ethical-muted" style="font-size: 0.85rem; font-weight: 600;">Nume utilizator</div>
+                <div class="text-strong">@Model.User.UserName</div>
+            </div>
+            <div class="col-md-6">
+                <div class="ethical-muted" style="font-size: 0.85rem; font-weight: 600;">Email</div>
+                <div class="text-strong">@Model.User.Email</div>
+            </div>
+            <div class="col-md-6">
+                <div class="ethical-muted" style="font-size: 0.85rem; font-weight: 600;">Status cont</div>
+                <div>
+                    @if (Model.User.IsActive)
+                    {
+                        <span class="rtp-badge" style="background:var(--success-soft);color:#166534;border-color:#BBF7D0;">
+                            <i data-lucide="check-circle"></i>
+                            <span>Activ</span>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="rtp-badge" style="background:var(--danger-soft);color:#991B1B;border-color:#FECACA;">
+                            <i data-lucide="x-circle"></i>
+                            <span>Inactiv</span>
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="ethical-muted" style="font-size: 0.85rem; font-weight: 600;">ID utilizator</div>
+                <div class="ethical-muted" style="font-family: monospace; font-size: 0.85rem;">@Model.User.UserId</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="ethical-muted mb-0">Nu există date despre utilizator.</p>
+    }
+</div>
+
+<!-- Încheie sesiunea de cercetare -->
+<div class="ethical-panel mt-4" style="background: var(--bg-soft);">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div class="text-strong" style="font-weight: 700;">Încheie sesiunea</div>
+            <div class="ethical-muted" style="font-size: 0.9rem;">
+                Te deconectează și marchează sesiunea ca încheiată.
+            </div>
+        </div>
+        <form asp-controller="Experiment" asp-action="EndSession" method="post"
+              onsubmit="return confirm('Confirmi încheierea sesiunii?');">
+            <button type="submit" class="btn btn-outline-secondary">
+                <i data-lucide="log-out"></i>
+                <span>Încheie sesiunea</span>
+            </button>
+        </form>
+    </div>
+</div>

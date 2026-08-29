@@ -1,0 +1,146 @@
+﻿@model BetLab.EthicalWeb.Models.AdminTransactionsPageViewModel
+@{
+    ViewData["Title"] = "Admin — Tranzacții";
+
+    string TypeLabel(string t) => t switch {
+        "InitialCredit"      => "Credit inițial",
+        "Deposit"            => "Depunere",
+        "Withdrawal"         => "Retragere",
+        "BetPlaced"          => "Pariu plasat",
+        "BetWon"             => "Câștig pariu",
+        "AdminReset"         => "Reset admin",
+        "CasinoSpin"         => "Spin casino",
+        "RouletteSpinDebit"  => "Ruleta debit",
+        "RouletteSpinCredit" => "Ruleta câștig",
+        "BlackjackStake"     => "Blackjack miză",
+        "BlackjackPayout"    => "Blackjack câștig",
+        _                    => t
+    };
+
+    string TypeBadge(string t) => t switch {
+        "Deposit" or "InitialCredit" or "BetWon" or "RouletteSpinCredit" or "BlackjackPayout"
+            => "bg-success",
+        "Withdrawal" or "BetPlaced" or "RouletteSpinDebit" or "BlackjackStake" or "CasinoSpin"
+            => "bg-danger",
+        "AdminReset" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    string AmountColor(string t) => t switch {
+        "Deposit" or "InitialCredit" or "BetWon" or "RouletteSpinCredit" or "BlackjackPayout"
+            => "text-success",
+        "Withdrawal" or "BetPlaced" or "RouletteSpinDebit" or "BlackjackStake" or "CasinoSpin"
+            => "text-danger",
+        _ => "text-muted"
+    };
+
+    bool isCredit(string t) => t is "Deposit" or "InitialCredit" or "BetWon"
+        or "RouletteSpinCredit" or "BlackjackPayout";
+
+    var filters = new[] {
+        ("", "Toate"),
+        ("Deposit", "Depuneri"),
+        ("Withdrawal", "Retrageri"),
+        ("BetPlaced", "Pariuri plasate"),
+        ("BetWon", "Câștiguri pariuri"),
+        ("InitialCredit", "Credit inițial"),
+        ("AdminReset", "Reset admin")
+    };
+
+    int totalPages = (int)Math.Ceiling((double)Model.Total / Model.PageSize);
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">💳 Tranzacții</h1>
+        <p class="eth-page-subtitle">@Model.Total total înregistrate</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+</div>
+
+<!-- Filtre -->
+<div class="d-flex gap-2 flex-wrap mb-3">
+    @foreach (var (val, label) in filters)
+    {
+        <a asp-action="Transactions" asp-route-type="@val" asp-route-page="1"
+           class="btn btn-sm @(Model.Filter == val || (val == "" && string.IsNullOrEmpty(Model.Filter)) ? "btn-primary" : "btn-outline-secondary")">
+            @label
+        </a>
+    }
+</div>
+
+<div class="eth-panel">
+    <div class="eth-panel-body p-0">
+        @if (!Model.Items.Any())
+        {
+            <div class="p-5 text-center text-muted">Nu există tranzacții.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr style="font-size:0.78rem;text-transform:uppercase;color:#6b7280;letter-spacing:.04em;">
+                            <th class="px-4 py-3">Data</th>
+                            <th class="px-3 py-3">Utilizator</th>
+                            <th class="px-3 py-3">Tip</th>
+                            <th class="px-3 py-3 text-end">Sumă</th>
+                            <th class="px-3 py-3 text-end">Sold înainte</th>
+                            <th class="px-3 py-3 text-end">Sold după</th>
+                            <th class="px-3 py-3">Descriere</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model.Items)
+                        {
+                            <tr>
+                                <td class="px-4 py-3 text-muted small" style="white-space:nowrap;">
+                                    @t.CreatedAt.ToRomanianTime().ToString("dd MMM yyyy HH:mm")
+                                </td>
+                                <td class="px-3 py-3">
+                                    <div class="fw-semibold small">@(t.UserName ?? "—")</div>
+                                    <div class="text-muted" style="font-size:0.72rem;">@t.UserEmail</div>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <span class="badge @TypeBadge(t.Type)" style="font-size:0.72rem;">
+                                        @TypeLabel(t.Type)
+                                    </span>
+                                </td>
+                                <td class="px-3 py-3 text-end">
+                                    <span class="fw-bold @AmountColor(t.Type)">
+                                        @(isCredit(t.Type) ? "+" : "−")@t.Amount.ToString("F2")
+                                    </span>
+                                </td>
+                                <td class="px-3 py-3 text-end text-muted small">
+                                    @t.BalanceBefore.ToString("F2")
+                                </td>
+                                <td class="px-3 py-3 text-end small">
+                                    @t.BalanceAfter.ToString("F2")
+                                </td>
+                                <td class="px-3 py-3 text-muted small" style="max-width:200px;">
+                                    @(t.Description ?? "—")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginare -->
+            @if (totalPages > 1)
+            {
+                <div class="d-flex justify-content-center gap-2 p-3">
+                    @for (int i = 1; i <= Math.Min(totalPages, 10); i++)
+                    {
+                        <a asp-action="Transactions" asp-route-type="@Model.Filter" asp-route-page="@i"
+                           class="btn btn-sm @(i == Model.Page ? "btn-primary" : "btn-outline-secondary")">@i</a>
+                    }
+                    @if (totalPages > 10)
+                    {
+                        <span class="text-muted align-self-center">... @totalPages</span>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>

@@ -1,0 +1,90 @@
+@model BetLab.EthicalWeb.Models.AdminAddEventViewModel
+@{
+    ViewData["Title"] = "Admin — Eveniment nou";
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">+ Eveniment nou</h1>
+    </div>
+    <a asp-action="Events" class="btn btn-outline-secondary btn-sm">← Înapoi</a>
+</div>
+
+<div class="eth-panel" style="max-width:640px;">
+    <div class="eth-panel-body">
+        <form asp-action="AddEvent" method="post">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Sport</label>
+                    <select name="sportId" class="form-select" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var s in Model.Sports)
+                        { <option value="@s.Id">@s.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Competiție</label>
+                    <select name="competitionId" class="form-select" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var c in Model.Competitions)
+                        { <option value="@c.Id">@c.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Echipa gazdă</label>
+                    <select name="homeTeamId" id="homeTeamId" class="form-select" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var t in Model.Teams)
+                        { <option value="@t.Id" data-name="@t.Name">@t.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Echipa oaspete</label>
+                    <select name="awayTeamId" id="awayTeamId" class="form-select" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var t in Model.Teams)
+                        { <option value="@t.Id" data-name="@t.Name">@t.Name</option> }
+                    </select>
+                </div>
+                <input type="hidden" name="homeTeamName" id="homeTeamName" />
+                <input type="hidden" name="awayTeamName" id="awayTeamName" />
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Data și ora (ora locală)</label>
+                    <input type="datetime-local" name="startTimeUtc" class="form-control" required />
+                </div>
+                <div class="col-12">
+                    <hr />
+                    <p class="text-muted mb-2" style="font-size:0.85rem;">Piața 1X2 — cotele vor fi create automat</p>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <label class="form-label fw-semibold small">Cotă 1 (gazdă)</label>
+                            <input type="number" name="oddsHome" step="0.01" min="1.01" value="2.00" class="form-control" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold small">Cotă X (egal)</label>
+                            <input type="number" name="oddsDraw" step="0.01" min="1.01" value="3.20" class="form-control" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold small">Cotă 2 (oaspete)</label>
+                            <input type="number" name="oddsAway" step="0.01" min="1.01" value="3.50" class="form-control" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary w-100">Creează eveniment</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('homeTeamId').addEventListener('change', function() {
+    document.getElementById('homeTeamName').value = this.options[this.selectedIndex].getAttribute('data-name') || '';
+});
+document.getElementById('awayTeamId').addEventListener('change', function() {
+    document.getElementById('awayTeamName').value = this.options[this.selectedIndex].getAttribute('data-name') || '';
+});
+</script>
+}

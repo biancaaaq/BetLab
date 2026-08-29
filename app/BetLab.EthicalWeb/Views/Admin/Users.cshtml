@@ -1,0 +1,95 @@
+﻿@model List<BetLab.EthicalWeb.Models.AdminUserViewModel>
+@{
+    ViewData["Title"] = "Admin — Utilizatori";
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">👥 Gestionare utilizatori</h1>
+        <p class="eth-page-subtitle">@Model.Count utilizatori înregistrați</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+@if (TempData["AdminError"] != null)
+{ <div class="alert alert-danger mb-3">⚠️ @TempData["AdminError"]</div> }
+
+<div class="eth-panel">
+    <div class="eth-panel-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr style="font-size:0.8rem;text-transform:uppercase;color:#6b7280;letter-spacing:.04em;">
+                        <th class="px-4 py-3">Utilizator</th>
+                        <th class="px-3 py-3">Sold</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3">Înregistrat</th>
+                        <th class="px-3 py-3 text-end">Acțiuni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        var isAdmin = u.Roles.Contains("Admin");
+                        <tr>
+                            <td class="px-4 py-3">
+                                <div class="fw-semibold">@u.UserName</div>
+                                <div class="text-muted small">@u.Email</div>
+                                @if (isAdmin)
+                                { <span class="badge bg-warning text-dark mt-1" style="font-size:0.7rem;">ADMIN</span> }
+                            </td>
+                            <td class="px-3 py-3">
+                                <span class="fw-bold">@u.Balance.ToString("F2")</span>
+                                <span class="text-muted small"> @u.Currency</span>
+                            </td>
+                            <td class="px-3 py-3">
+                                @if (u.IsExcluded)
+                                { <span class="badge bg-purple text-white" style="background:#7c3aed!important;">🔒 Exclus</span> }
+                                else if (!u.IsActive)
+                                { <span class="badge bg-danger">Blocat</span> }
+                                else
+                                { <span class="badge bg-success">Activ</span> }
+                            </td>
+                            <td class="px-3 py-3 text-muted small">
+                                @u.CreatedAt.ToRomanianTime().ToString("dd MMM yyyy")
+                            </td>
+                            <td class="px-3 py-3">
+                                <div class="d-flex gap-1 justify-content-end flex-wrap">
+                                    @if (!isAdmin)
+                                    {
+                                        <form asp-action="ResetBalance" method="post" class="d-inline"
+                                              onsubmit="return confirm('Resetezi soldul la 100 RON?')">
+                                            <input type="hidden" name="userId" value="@u.UserId" />
+                                            <button class="btn btn-sm btn-outline-info" style="font-size:0.75rem;">🔄 Reset</button>
+                                        </form>
+                                        @if (u.IsActive)
+                                        {
+                                            <form asp-action="BlockUser" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Blochezi utilizatorul @u.UserName?')">
+                                                <input type="hidden" name="userId" value="@u.UserId" />
+                                                <button class="btn btn-sm btn-outline-danger" style="font-size:0.75rem;">🚫 Blochează</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="UnblockUser" method="post" class="d-inline">
+                                                <input type="hidden" name="userId" value="@u.UserId" />
+                                                <button class="btn btn-sm btn-outline-success" style="font-size:0.75rem;">✅ Deblochează</button>
+                                            </form>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

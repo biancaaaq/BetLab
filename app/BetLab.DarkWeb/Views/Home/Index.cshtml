@@ -1,0 +1,243 @@
+﻿@model List<BetLab.DarkWeb.Models.EventListItemViewModel>
+@{
+    ViewData["Title"] = "Acasă";
+    var hasToken = !string.IsNullOrWhiteSpace(Context.Session.GetString("Dark_JwtToken"));
+    var rand = new Random();
+    var topEvents = Model?.Take(5).ToList() ?? new();
+}
+
+<!-- Hero -->
+<div style="text-align:center;padding:3.5rem 1rem 2.5rem;position:relative;">
+    <div class="dark-chip dark-chip-red mb-3" style="display:inline-flex;">
+        <span class="dark-live-dot"></span> LIVE · @(rand.Next(800,1300)) jucători activi acum
+    </div>
+    <h1 style="font-size:clamp(2rem,5vw,3.5rem);font-weight:900;color:white;margin-bottom:1rem;line-height:1.1;text-transform:uppercase;">
+        <span style="color:var(--primary);">CAMPIONII</span> JOACĂ ÎN UCL.<br />TU? <span style="color:var(--gold);">LA BETLAB</span>
+    </h1>
+    <p style="font-size:1.05rem;color:var(--text-muted);max-width:520px;margin:0 auto 2rem;">
+        Cele mai mari cote din România. Jackpot-uri zilnice. Câștigătorii de azi au început exact ca tine.
+    </p>
+    @if (!hasToken)
+    {
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+            <a asp-controller="Account" asp-action="Register" class="btn-dark-primary pulse" style="padding:0.9rem 2rem;font-size:1rem;">
+                🚀 CREEAZĂ CONT GRATUIT
+            </a>
+            <a asp-controller="Account" asp-action="Login" class="btn-dark-secondary" style="padding:0.9rem 2rem;font-size:1rem;">
+                Intră în cont
+            </a>
+        </div>
+        <div style="margin-top:1rem;font-size:0.82rem;color:var(--text-dim);">
+            🎁 Bonus 200% la prima depunere · Fără comisioane · Retrageri rapide
+        </div>
+    }
+    else
+    {
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+            <a asp-controller="Events" asp-action="Index" class="btn-dark-primary pulse" style="padding:0.9rem 2rem;font-size:1rem;">
+                🔥 PARIURI SPORTIVE
+            </a>
+            <a asp-controller="Casino" asp-action="Index" class="btn-dark-gold btn-dark-primary" style="padding:0.9rem 2rem;font-size:1rem;">
+                🎰 CASINO
+            </a>
+        </div>
+    }
+</div>
+
+@{
+    var userIdForBonus = Context.Session.GetString("Dark_CurrentUserId") ?? "";
+    var bonusClaimKey  = $"Dark_DailyBonus_{DateTime.UtcNow:yyyyMMdd}_{userIdForBonus}";
+    var dailyBonusClaimed = Context.Session.GetString(bonusClaimKey) == "claimed";
+}
+@if (hasToken && !dailyBonusClaimed)
+{
+    <!-- Banner Bonus Zilnic — dark pattern: sesizabil, tentant, urgent -->
+    <div style="background:linear-gradient(135deg,#78350f,#1a0a00);border:1px solid rgba(245,158,11,0.5);
+                border-radius:var(--radius-lg);padding:1rem 1.5rem;margin-bottom:1.5rem;
+                display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+                box-shadow:0 0 20px rgba(245,158,11,0.15);">
+        <div>
+            <div style="font-size:0.72rem;font-weight:800;color:#F59E0B;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.2rem;">
+                ⚡ Bonus zilnic disponibil!
+            </div>
+            <div style="font-size:1rem;font-weight:900;color:white;">
+                🎁 Revendică <span style="color:#FCD34D;">10 RON GRATUIT</span> astăzi!
+            </div>
+            <div style="font-size:0.75rem;color:#9CA3AF;margin-top:0.2rem;">
+                Expiră la miezul nopții · Fără ruladă
+            </div>
+        </div>
+        <form asp-controller="Promotions" asp-action="ClaimDailyBonus" method="post" style="flex-shrink:0;">
+            <button type="submit" style="background:linear-gradient(135deg,#D97706,#F59E0B);border:none;
+                                         border-radius:var(--radius);color:#1a0a00;font-weight:900;
+                                         font-size:0.9rem;padding:0.6rem 1.4rem;cursor:pointer;
+                                         transition:all 0.15s;"
+                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(245,158,11,0.5)'"
+                    onmouseout="this.style.transform='';this.style.boxShadow=''">
+                Revendică acum! →
+            </button>
+        </form>
+    </div>
+}
+
+<!-- Ticker câștiguri -->
+<div class="dark-ticker mb-5">
+    <div class="dark-ticker-inner">
+        🏆 <span class="dark-ticker-win">Andrei M. a câștigat 2.840 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Elena D. a câștigat 560 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Radu C. a câștigat 14.200 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Ion P. a câștigat 390 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Maria S. a câștigat 7.500 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">George B. a câștigat 1.120 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Vlad N. a câștigat 48.320 RON — JACKPOT!</span> &nbsp;·&nbsp;
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Meciuri în evidență -->
+    <div class="col-lg-7">
+        <div class="dark-panel">
+            <div class="dark-panel-header dark-panel-header--red">
+                🔥 Meciuri fierbinți azi
+                <a asp-controller="Events" asp-action="Index"
+                   style="margin-left:auto;font-size:0.78rem;color:#FCA5A5;font-weight:600;text-decoration:none;">
+                    Vezi toate →
+                </a>
+            </div>
+            @if (!topEvents.Any())
+            {
+                <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+                    Se încarcă meciurile...
+                </div>
+            }
+            else
+            {
+                @foreach (var ev in topEvents)
+                {
+                    var viewers = rand.Next(95, 480);
+                    <div class="dark-event-row">
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+                                <span class="hot-badge">HOT</span>
+                                <span class="dark-event-teams">@ev.HomeTeam vs @ev.AwayTeam</span>
+                            </div>
+                            <div class="dark-event-meta">
+                                @ev.CompetitionName · @ev.StartTimeUtc.ToRomanianTime().ToString("dd MMM · HH:mm")
+                                <span style="color:var(--primary);font-weight:600;margin-left:0.5rem;">
+                                    👁 @viewers pariează
+                                </span>
+                            </div>
+                        </div>
+                        <a asp-controller="Events" asp-action="Details" asp-route-id="@ev.EventId"
+                           class="btn-dark-primary" style="padding:0.45rem 0.9rem;font-size:0.78rem;flex-shrink:0;">
+                            PARIAZĂ
+                        </a>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Dreapta: promo + casino -->
+    <div class="col-lg-5">
+
+        <!-- Bonus fake -->
+        <div class="dark-panel mb-4" style="border-color:rgba(245,158,11,0.4);background:linear-gradient(135deg,#1A1A00,#1A1A1A);">
+            <div class="dark-panel-header" style="color:var(--gold);border-bottom-color:rgba(245,158,11,0.2);">
+                🎁 Ofertă exclusivă — expiră în <span id="home-timer" style="color:white;">14:59</span>
+            </div>
+            <div class="dark-panel-body" style="text-align:center;">
+                <div style="font-size:2rem;font-weight:900;color:var(--gold);margin-bottom:0.5rem;">BONUS 200%</div>
+                <div style="font-size:0.875rem;color:var(--text-muted);margin-bottom:1.25rem;">
+                    La prima depunere. Câștiguri nelimitate.
+                </div>
+                @if (!hasToken)
+                {
+                    <a asp-controller="Account" asp-action="Register"
+                       class="btn-dark-gold btn-dark-primary" style="padding:0.75rem 1.5rem;">
+                        REVENDICĂ BONUSUL →
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Casino" asp-action="Index"
+                       class="btn-dark-gold btn-dark-primary" style="padding:0.75rem 1.5rem;">
+                        🎰 JOACĂ ACUM
+                    </a>
+                }
+                <div style="font-size:0.68rem;color:#374151;margin-top:0.75rem;">
+                    *T&amp;C se aplică. Rulaj 40x. Ofertă limitată.
+                </div>
+            </div>
+        </div>
+
+        <!-- Jackpot fake -->
+        <div class="dark-panel" style="border-color:#7F1D1D;">
+            <div class="dark-panel-header dark-panel-header--red" style="justify-content:center;">
+                🏆 JACKPOT PROGRESIV
+            </div>
+            <div class="dark-panel-body" style="text-align:center;">
+                <div style="font-size:2.2rem;font-weight:900;color:#34D399;animation:balance-pulse 1.5s infinite;" id="jackpot-display">
+                    48.320 RON
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin:0.5rem 0 1.25rem;">
+                    Crește cu fiecare rotire. Ultimul câștigător: <strong style="color:white;">Vlad N.</strong>
+                </div>
+                <a asp-controller="Casino" asp-action="Index" class="btn-dark-primary" style="padding:0.7rem 1.5rem;">
+                    🎰 ÎNCEARCĂ ACUM
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistici fake -->
+<div class="row g-3 mt-4">
+    @{
+        var stats = new[]
+        {
+            ("🏆", "Total câștiguri azi", "284.720 RON"),
+            ("⚽", "Meciuri disponibile", Model?.Count.ToString() ?? "50+"),
+            ("🎰", "Rotiri efectuate azi", "12.847"),
+            ("👥", "Utilizatori activi", "1.247"),
+        };
+    }
+    @foreach (var (icon, label, value) in stats)
+    {
+        <div class="col-6 col-md-3">
+            <div class="dark-panel text-center" style="padding:1.2rem;">
+                <div style="font-size:1.5rem;margin-bottom:0.3rem;">@icon</div>
+                <div class="dark-stat-value">@value</div>
+                <div class="dark-stat-label">@label</div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+(function(){
+    var key='dark_home_offer';
+    var end=sessionStorage.getItem(key);
+    if(!end){end=Date.now()+15*60*1000;sessionStorage.setItem(key,end);}
+    function tick(){
+        var r=Math.max(0,end-Date.now());
+        var m=Math.floor(r/60000),s=Math.floor((r%60000)/1000);
+        var el=document.getElementById('home-timer');
+        if(el) el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+        if(r>0) setTimeout(tick,1000);
+        else{sessionStorage.removeItem(key);end=Date.now()+15*60*1000;sessionStorage.setItem(key,end);setTimeout(tick,1000);}
+    }
+    tick();
+})();
+
+(function(){
+    var base=48320;
+    setInterval(function(){
+        base+=Math.floor(Math.random()*12)+1;
+        var el=document.getElementById('jackpot-display');
+        if(el) el.textContent=base.toLocaleString('ro-RO')+' RON';
+    },2500);
+})();
+</script>
+}

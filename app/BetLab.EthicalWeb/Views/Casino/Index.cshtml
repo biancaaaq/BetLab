@@ -1,0 +1,466 @@
+﻿@using System.Text.Json
+@model BetLab.EthicalWeb.Models.CasinoPageViewModel
+
+@{
+    ViewData["Title"] = "Cazinou";
+
+    string SymbolEmoji(string name) => name switch
+    {
+        "Cherry"  => "🍒",
+        "Seven"   => "7️⃣",
+        "Bell"    => "🔔",
+        "Star"    => "⭐",
+        "Diamond" => "💎",
+        "Clover"  => "🍀",
+        "Crown"   => "👑",
+        _         => name
+    };
+
+    BetLab.EthicalWeb.Models.CasinoSpinResponseViewModel? lastSpin = null;
+    if (TempData["CasinoLastSpin"] != null)
+    {
+        lastSpin = JsonSerializer.Deserialize<BetLab.EthicalWeb.Models.CasinoSpinResponseViewModel>(
+            TempData["CasinoLastSpin"]!.ToString()!);
+    }
+
+    var selectedGameId = Model.SelectedGame?.CasinoGameId ?? 0;
+
+    // Statistici sesiune pentru jocul selectat
+    var gameHistory = selectedGameId > 0
+        ? Model.History.Where(h => h.GameName == Model.SelectedGame!.Name).ToList()
+        : Model.History.ToList();
+
+    var totalStaked = gameHistory.Sum(h => h.Stake);
+    var totalPayout = gameHistory.Sum(h => h.Payout);
+    var netResult = totalPayout - totalStaked;
+    var spinCount = gameHistory.Count;
+}
+
+<!-- Reality Check Banner (apare după 30 min via JS) -->
+<div id="reality-check-banner" class="reality-check-banner" style="display:none;">
+    <div class="reality-check-content">
+        <div class="reality-check-icon">
+            <i data-lucide="clock" style="width:32px;height:32px;color:var(--eth-primary);"></i>
+        </div>
+        <div>
+            <div class="reality-check-title">Pauză de reflecție</div>
+            <div class="reality-check-body">
+                Joci de <strong id="rc-minutes">30</strong> minute în această sesiune.
+                Sold curent: <strong id="rc-balance">—</strong> RON.
+                Rezultat net sesiune: <strong id="rc-net">—</strong> RON.
+            </div>
+        </div>
+        <div class="reality-check-actions">
+            <button class="btn-eth-outline btn-sm" onclick="dismissRealityCheck()">Continuă</button>
+            <a asp-controller="Account" asp-action="EndResearchSession" class="btn-eth-danger btn-sm">Încheie sesiunea</a>
+        </div>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="eth-alert eth-alert-danger mb-4">
+        <i data-lucide="alert-circle"></i> @TempData["Error"]
+    </div>
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">Cazinou</h1>
+        <p class="eth-page-subtitle">Jocuri de tip slot demo — fiecare joc afișează RTP-ul real</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Coloana jocuri -->
+    <div class="col-md-3">
+        <div class="eth-panel">
+            <div class="eth-panel-header">
+                <i data-lucide="grid"></i> Jocuri disponibile
+            </div>
+            <div class="eth-panel-body p-0">
+                <!-- Ruletă — joc special -->
+                <a asp-controller="Roulette" asp-action="Index"
+                   class="casino-game-card @(ViewContext.RouteData.Values["controller"]?.ToString() == "Roulette" ? "casino-game-card--active" : "")">
+                    <div class="casino-game-card__info">
+                        <div class="casino-game-card__name">Ruletă</div>
+                        <div class="casino-game-card__type">Masă</div>
+                    </div>
+                    <div class="casino-game-card__badges">
+                        <span class="rtp-badge">RTP 97.3%</span>
+                        <span class="eth-chip eth-chip-blue">Low</span>
+                    </div>
+                </a>
+
+                <!-- Blackjack -->
+                <a asp-controller="Blackjack" asp-action="Index"
+                   class="casino-game-card @(ViewContext.RouteData.Values["controller"]?.ToString() == "Blackjack" ? "casino-game-card--active" : "")">
+                    <div class="casino-game-card__info">
+                        <div class="casino-game-card__name">Blackjack</div>
+                        <div class="casino-game-card__type">Masă · 21</div>
+                    </div>
+                    <div class="casino-game-card__badges">
+                        <span class="rtp-badge">RTP 99.5%</span>
+                        <span class="eth-chip eth-chip-green">Low</span>
+                    </div>
+                </a>
+
+                @foreach (var game in Model.Games.Where(g =>
+                    g.Type != "Roulette" && g.Type != "Blackjack"))
+                {
+                    var isSelected = game.CasinoGameId == selectedGameId;
+                    var volatilityClass = game.Volatility?.ToLower() switch
+                    {
+                        "low" => "eth-chip-green",
+                        "medium" => "eth-chip-blue",
+                        "high" => "eth-chip-orange",
+                        _ => "eth-chip-blue"
+                    };
+                    <a asp-controller="Casino" asp-action="Index" asp-route-gameId="@game.CasinoGameId"
+                       class="casino-game-card @(isSelected ? "casino-game-card--active" : "")">
+                        <div class="casino-game-card__info">
+                            <div class="casino-game-card__name">@game.Name</div>
+                            <div class="casino-game-card__type">@game.Type</div>
+                        </div>
+                        <div class="casino-game-card__badges">
+                            <span class="rtp-badge">RTP @game.RtpPercent.ToString("F1")%</span>
+                            <span class="eth-chip @volatilityClass">@game.Volatility</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+
+        <!-- Explainer RTP -->
+        <div class="eth-panel mt-3">
+            <div class="eth-panel-header">
+                <i data-lucide="info"></i> Ce înseamnă RTP?
+            </div>
+            <div class="eth-panel-body">
+                <p class="text-sm text-muted mb-2">
+                    <strong>Return to Player (RTP)</strong> reprezintă procentul din totalul mizelor
+                    pe care un joc îl returnează jucătorilor pe termen lung.
+                </p>
+                <p class="text-sm text-muted mb-2">
+                    Exemplu: un joc cu RTP 96% returnează în medie 96 RON din fiecare 100 RON mizați.
+                    Restul de 4% reprezintă avantajul cazinoului (house edge).
+                </p>
+                <p class="text-sm text-muted mb-0">
+                    RTP-ul este calculat pe milioane de rotiri — nu garantează rezultatul unei sesiuni individuale.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coloana joc activ + rezultat -->
+    <div class="col-md-9">
+        @if (Model.SelectedGame != null)
+        {
+            <!-- Sumar sesiune -->
+            <div class="eth-panel mb-4">
+                <div class="eth-panel-header">
+                    <i data-lucide="bar-chart-2"></i> Sesiunea ta — @Model.SelectedGame.Name
+                </div>
+                <div class="eth-panel-body">
+                    <div class="row g-3 text-center">
+                        <div class="col-3">
+                            <div class="stat-value">@spinCount</div>
+                            <div class="stat-label">Rotiri</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-value">@totalStaked.ToString("F2") RON</div>
+                            <div class="stat-label">Total mizat</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="stat-value">@totalPayout.ToString("F2") RON</div>
+                            <div class="stat-label">Total câștigat</div>
+                        </div>
+                        <div class="col-3">
+                            @{
+                                var netClass = netResult >= 0 ? "text-success" : "text-danger";
+                                var netSign = netResult >= 0 ? "+" : "";
+                            }
+                            <div class="stat-value @netClass">@netSign@netResult.ToString("F2") RON</div>
+                            <div class="stat-label">Rezultat net</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form spin -->
+            <div class="eth-panel mb-4">
+                <div class="eth-panel-header">
+                    <i data-lucide="zap"></i> @Model.SelectedGame.Name
+                    <span class="rtp-badge ms-2">RTP @Model.SelectedGame.RtpPercent.ToString("F1")%</span>
+                </div>
+                <div class="eth-panel-body">
+                    <p class="text-muted text-sm mb-3">
+                        Linia de plată activă: rândul din mijloc. 3 simboluri identice = câștig mic, 4 = câștig, 5 = jackpot.
+                    </p>
+
+                    <!-- Sold disponibil — vizibil înainte de a miza -->
+                    <div class="d-flex align-items-center gap-2 mb-3 p-2"
+                         style="background:var(--eth-bg-soft,#F9FAFB);border:1px solid var(--eth-border,#E5E7EB);border-radius:8px;font-size:0.85rem;">
+                        <i data-lucide="wallet" style="width:15px;height:15px;color:var(--eth-primary,#2563EB);flex-shrink:0;"></i>
+                        <span class="text-muted">Sold disponibil:</span>
+                        <strong>@Model.Balance.ToString("0.##") @Model.Currency</strong>
+                    </div>
+
+                    <form asp-controller="Casino" asp-action="Spin" method="post">
+                        <input type="hidden" name="casinoGameId" value="@Model.SelectedGame.CasinoGameId" />
+                        <div class="row g-3 align-items-end">
+                            <div class="col-sm-6">
+                                <label for="stake" class="form-label fw-semibold">Miză (RON)</label>
+                                <input type="number" name="stake" id="stake"
+                                       min="1" max="500" step="0.50"
+                                       class="form-control"
+                                       placeholder="ex: 10"
+                                       required />
+                            </div>
+                            <div class="col-sm-6">
+                                <button type="submit" class="btn-eth w-100">
+                                    <i data-lucide="rotate-cw"></i> Rotire
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Notă design etic: rotire conștientă, fără auto-spin -->
+                    <div class="d-flex align-items-center gap-2 mt-3"
+                         style="font-size:0.78rem;color:var(--eth-muted,#6B7280);">
+                        <i data-lucide="mouse-pointer-click" style="width:13px;height:13px;flex-shrink:0;"></i>
+                        <span>Fiecare rotire necesită un click deliberat — nu există rotire automată.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rezultatul ultimei rotiri -->
+            @if (lastSpin != null)
+            {
+                var symbolGrid = JsonSerializer.Deserialize<string[][]>(lastSpin.SymbolsJson) ?? Array.Empty<string[]>();
+                var isWin = lastSpin.Payout > 0;
+                var resultLabel = lastSpin.ResultType switch
+                {
+                    "BigWin" => "Jackpot!",
+                    "Win" => "Câștig",
+                    "SmallWin" => "Câștig mic",
+                    _ => "Fără câștig"
+                };
+
+                <div class="eth-panel mb-4">
+                    <div class="eth-panel-header">
+                        <i data-lucide="activity"></i> Ultima rotire
+                        @if (isWin)
+                        {
+                            <span class="eth-chip eth-chip-green ms-2">@resultLabel</span>
+                        }
+                        else
+                        {
+                            <span class="eth-chip eth-chip-gray ms-2">@resultLabel</span>
+                        }
+                    </div>
+                    <div class="eth-panel-body">
+                        <!-- Grid slot -->
+                        <div class="slot-grid mb-3">
+                            @for (int row = 0; row < symbolGrid.Length; row++)
+                            {
+                                <div class="slot-row @(row == 1 ? "slot-row--active" : "")">
+                                    @if (row == 1)
+                                    {
+                                        <div class="slot-payline-label">▶</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="slot-payline-label" style="visibility:hidden;">▶</div>
+                                    }
+                                    @foreach (var symbol in symbolGrid[row])
+                                    {
+                                        <div class="ethical-slot-cell @(row == 1 ? "ethical-active-line" : "")">
+                                            <span class="slot-symbol">@SymbolEmoji(symbol)</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Rezultate numerice -->
+                        <div class="row g-2 text-center">
+                            <div class="col-4">
+                                <div class="stat-value text-sm">@lastSpin.Stake.ToString("F2") RON</div>
+                                <div class="stat-label">Miză</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-value text-sm">×@lastSpin.Multiplier</div>
+                                <div class="stat-label">Multiplicator</div>
+                            </div>
+                            <div class="col-4">
+                                @if (isWin)
+                                {
+                                    <div class="stat-value text-sm text-success">+@lastSpin.Payout.ToString("F2") RON</div>
+                                }
+                                else
+                                {
+                                    <div class="stat-value text-sm text-danger">-@lastSpin.Stake.ToString("F2") RON</div>
+                                }
+                                <div class="stat-label">Rezultat</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 pt-3 border-top text-muted text-sm">
+                            Sold după rotire: <strong>@lastSpin.NewBalance.ToString("F2") RON</strong>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="eth-panel">
+                <div class="eth-panel-body text-center py-5">
+                    <i data-lucide="mouse-pointer-click" style="width:48px;height:48px;color:var(--eth-muted);"></i>
+                    <p class="mt-3 text-muted">Selectează un joc din lista din stânga pentru a începe.</p>
+                </div>
+            </div>
+        }
+
+        <!-- Istoric -->
+        <div class="eth-panel">
+            <div class="eth-panel-header">
+                <i data-lucide="list"></i> Istoric rotiri
+            </div>
+            <div class="eth-panel-body p-0">
+                @if (!Model.History.Any())
+                {
+                    <div class="p-4 text-center text-muted">Nu există rotiri înregistrate încă.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="eth-table">
+                            <thead>
+                                <tr>
+                                    <th>Joc</th>
+                                    <th>Miză</th>
+                                    <th>Multiplicator</th>
+                                    <th>Câștig</th>
+                                    <th>Rezultat</th>
+                                    <th>Ora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.History)
+                                {
+                                    var rowClass = item.Payout > 0 ? "eth-table-row--win" : "";
+                                    <tr class="@rowClass">
+                                        <td>@item.GameName</td>
+                                        <td>@item.Stake.ToString("F2") RON</td>
+                                        <td>×@item.Multiplier</td>
+                                        <td>
+                                            @if (item.Payout > 0)
+                                            {
+                                                <span class="text-success fw-semibold">+@item.Payout.ToString("F2") RON</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-danger">−@item.Stake.ToString("F2") RON</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @switch (item.ResultType)
+                                            {
+                                                case "BigWin":
+                                                    <span class="eth-chip eth-chip-green">Jackpot</span>
+                                                    break;
+                                                case "Win":
+                                                    <span class="eth-chip eth-chip-blue">Câștig</span>
+                                                    break;
+                                                case "SmallWin":
+                                                    <span class="eth-chip eth-chip-blue">Câștig mic</span>
+                                                    break;
+                                                default:
+                                                    <span class="eth-chip eth-chip-gray">Pierdere</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td class="text-muted text-sm">@item.CreatedAt.ToRomanianTime().ToString("HH:mm:ss")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reality Check JS -->
+@section Scripts {
+<script>
+(function () {
+    var SESSION_KEY = 'eth_casino_session_start';
+    var INTERVAL_MINUTES = 30;
+
+    if (!sessionStorage.getItem(SESSION_KEY)) {
+        sessionStorage.setItem(SESSION_KEY, Date.now().toString());
+    }
+
+    var balance = '@(lastSpin?.NewBalance.ToString("F2") ?? "—")';
+    var netResult = '@netResult.ToString("F2")';
+
+    function checkRealityCheck() {
+        var start = parseInt(sessionStorage.getItem(SESSION_KEY), 10);
+        var elapsed = Math.floor((Date.now() - start) / 60000);
+
+        if (elapsed >= INTERVAL_MINUTES && !sessionStorage.getItem('eth_rc_dismissed_' + elapsed)) {
+            document.getElementById('rc-minutes').textContent = elapsed;
+            document.getElementById('rc-balance').textContent = balance !== '—' ? balance : '—';
+            document.getElementById('rc-net').textContent = netResult;
+            document.getElementById('reality-check-banner').style.display = 'flex';
+
+            ethLog('RealityCheckShown', 'Casino', {
+                targetType: 'Banner',
+                targetId: 'reality-check-banner',
+                metadataJson: JSON.stringify({ minutesElapsed: elapsed, balance: balance, netResult: netResult })
+            });
+        }
+    }
+
+    window.dismissRealityCheck = function () {
+        var start = parseInt(sessionStorage.getItem(SESSION_KEY), 10);
+        var elapsed = Math.floor((Date.now() - start) / 60000);
+        sessionStorage.setItem('eth_rc_dismissed_' + elapsed, '1');
+        document.getElementById('reality-check-banner').style.display = 'none';
+
+        ethLog('RealityCheckDismissed', 'Casino', {
+            targetType: 'Button',
+            targetId: 'rc-continue',
+            metadataJson: JSON.stringify({ minutesElapsed: elapsed, choice: 'continue' })
+        });
+    };
+
+    // Verifică la fiecare minut
+    setInterval(checkRealityCheck, 60000);
+    checkRealityCheck();
+})();
+
+// Log CasinoStakeChanged cu debounce
+(function() {
+    var stakeInput = document.getElementById('stake');
+    if (!stakeInput) return;
+    var stakeLogTimeout = null;
+    stakeInput.addEventListener('input', function() {
+        var v = parseFloat(this.value);
+        clearTimeout(stakeLogTimeout);
+        stakeLogTimeout = setTimeout(function() {
+            if (!isNaN(v) && v > 0 && typeof ethLog === 'function') {
+                ethLog('CasinoStakeChanged', 'Casino', {
+                    targetType: 'StakeInput', targetId: 'stake',
+                    newValue: String(v)
+                });
+            }
+        }, 800);
+    });
+})();
+</script>
+}

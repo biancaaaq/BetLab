@@ -1,0 +1,243 @@
+﻿@model BetLab.DarkWeb.Models.MyBetsPageViewModel
+@{
+    ViewData["Title"] = "Biletele mele";
+
+    string StatusLabel(string s) => s switch
+    {
+        "Won"        => "Câștigat 🏆",
+        "Lost"       => "Fără câștig",
+        "Pending"    => "În curs",
+        "Active"     => "Activ",
+        "Open"       => "Activ",
+        "CashedOut"  => "Cash Out 💸",
+        _            => s
+    };
+
+    string StatusColor(string s) => s switch
+    {
+        "Won"        => "color:#34D399;",
+        "Lost"       => "color:var(--text-dim);",
+        "Pending"    => "color:var(--primary);",
+        "Active"     => "color:var(--primary);",
+        "Open"       => "color:var(--primary);",
+        "CashedOut"  => "color:#F59E0B;",
+        _            => "color:var(--text-muted);"
+    };
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">🎯 Biletele mele</h1>
+</div>
+
+@if (TempData["CashOutSuccess"] != null)
+{
+    <div class="dark-alert dark-alert-success mb-3">💸 @TempData["CashOutSuccess"]</div>
+}
+@if (TempData["CashOutError"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-3">⚠️ @TempData["CashOutError"]</div>
+}
+
+<!-- Sumar — câștigurile în față -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;">
+            <div class="dark-stat-value">@Model.Bets.Count</div>
+            <div class="dark-stat-label">Total bilete</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;border-color:rgba(220,38,38,0.3);">
+            <div class="dark-stat-value" style="color:var(--primary);">@Model.Active.Count</div>
+            <div class="dark-stat-label">Active</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;border-color:#065F46;">
+            <div class="dark-stat-value" style="color:#34D399;">@Model.Won.Count</div>
+            <div class="dark-stat-label">Câștigate</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;">
+            <!-- Pierderile fără culoare roșie -->
+            <div class="dark-stat-value" style="color:var(--text-muted);">@Model.Lost.Count</div>
+            <div class="dark-stat-label">Fără câștig</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab-uri -->
+<div class="dark-panel">
+    <div class="dark-panel-header" style="padding:0;border-bottom:1px solid var(--border);">
+        <nav style="display:flex;">
+            @{
+                var tabs = new[] {
+                    ("all",        "Toate",       Model.Bets.Count),
+                    ("active",     "Active",       Model.Active.Count),
+                    ("won",        "Câștigate",    Model.Won.Count),
+                    ("lost",       "Necâștigate",  Model.Lost.Count),
+                    ("cashedout",  "Cash Out 💸",  Model.CashedOut.Count),
+                };
+            }
+            @foreach (var (key, label, count) in tabs)
+            {
+                var isActive = Model.ActiveTab == key;
+                <a href="?tab=@key"
+                   style="display:flex;align-items:center;gap:0.4rem;padding:0.85rem 1.25rem;
+                          font-size:0.85rem;font-weight:700;text-decoration:none;text-transform:uppercase;
+                          letter-spacing:0.04em;border-bottom:3px solid @(isActive ? "var(--primary)" : "transparent");
+                          color:@(isActive ? "white" : "#6B7280");transition:all 0.15s;">
+                    @label
+                    <span style="background:@(isActive ? "var(--primary)" : "#1F2937");color:@(isActive ? "white" : "#6B7280");
+                                 font-size:0.72rem;padding:0.1rem 0.45rem;border-radius:999px;font-weight:700;">
+                        @count
+                    </span>
+                </a>
+            }
+        </nav>
+    </div>
+
+    <div>
+        @if (!Model.CurrentTab.Any())
+        {
+            <div style="padding:3rem;text-align:center;color:var(--text-muted);">
+                <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎯</div>
+                <p style="margin-bottom:1rem;">Niciun bilet în această categorie.</p>
+                <a asp-controller="Events" asp-action="Index" class="btn-dark-primary" style="padding:0.6rem 1.5rem;">
+                    🔥 Pariază acum
+                </a>
+            </div>
+        }
+        else
+        {
+            @foreach (var bet in Model.CurrentTab.OrderByDescending(b => b.PlacedAt))
+            {
+                var isWon       = bet.Status == "Won";
+                var isLost      = bet.Status == "Lost";
+                var isCashedOut = bet.Status == "CashedOut";
+                var borderColor = isWon ? "var(--green)" : isLost ? "#1F1F1F" : "var(--primary)";
+                var potentialStr      = bet.PotentialPayout.ToString("F2");
+
+                // Cash Out: preview real calculat de backend (formula bookmakerilor)
+                Model.CashOutPreviews.TryGetValue(bet.BetSlipId, out var coPreview);
+                var canCashOut        = coPreview?.Available == true && coPreview.CashOutValue > 0;
+                var cashoutPreviewStr = (coPreview?.CashOutValue ?? 0m).ToString("F2");
+                var isPreMatch        = coPreview?.IsPreMatch == true;
+
+                <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);
+                            border-left:3px solid @borderColor;">
+                    <!-- Header -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.6rem;">
+                        <div style="display:flex;align-items:center;gap:0.75rem;">
+                            <span style="font-weight:800;font-size:0.9rem;">Bilet #@bet.BetSlipId</span>
+                            <span style="font-size:0.75rem;color:var(--text-dim);">
+                                @bet.PlacedAt.ToRomanianTime().ToString("dd MMM · HH:mm")
+                            </span>
+                        </div>
+                        <span style="font-size:0.82rem;font-weight:700;@StatusColor(bet.Status)">
+                            @StatusLabel(bet.Status)
+                        </span>
+                    </div>
+
+                    <!-- Selecții -->
+                    <div style="display:flex;flex-direction:column;gap:0.35rem;margin-bottom:0.75rem;">
+                        @foreach (var sel in bet.Selections)
+                        {
+                            <div style="display:flex;align-items:center;justify-content:space-between;
+                                        background:#111;border-radius:6px;padding:0.4rem 0.75rem;font-size:0.8rem;">
+                                <div>
+                                    <span style="color:white;font-weight:600;">@sel.EventName</span>
+                                    <span style="color:var(--text-dim);margin-left:0.5rem;">· @sel.MarketName</span>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:0.75rem;flex-shrink:0;">
+                                    <span style="color:var(--text-muted);">@sel.OutcomeName</span>
+                                    <span style="color:var(--gold);font-weight:800;">@sel.Odds.ToString("F2")</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Footer financiar — câștigul mare, pierderea minimizată -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.82rem;flex-wrap:wrap;gap:0.5rem;">
+                        <div style="color:var(--text-muted);">
+                            Miză: <strong style="color:white;">@bet.Stake.ToString("F2") RON</strong>
+                            <span style="margin:0 0.4rem;">·</span>
+                            Cotă: <strong style="color:white;">@bet.TotalOdds.ToString("F2")</strong>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                            @if (isWon)
+                            {
+                                <span style="color:#34D399;font-weight:900;font-size:1rem;">
+                                    +@bet.PotentialPayout.ToString("F2") RON 🏆
+                                </span>
+                            }
+                            else if (isCashedOut)
+                            {
+                                <span style="color:#F59E0B;font-weight:800;">
+                                    Cash Out: @((bet.ActualPayout ?? 0).ToString("F2")) RON 💸
+                                </span>
+                            }
+                            else if (isLost)
+                            {
+                                <!-- Pierderea fără sumă, fără roșu -->
+                                <span style="color:var(--text-dim);font-size:0.78rem;">
+                                    Câștig potențial: @bet.PotentialPayout.ToString("F2") RON
+                                </span>
+                            }
+                            else
+                            {
+                                <!-- Bilet activ -->
+                                <span style="color:var(--gold);font-weight:700;">
+                                    Câștig potențial: @potentialStr RON 🎯
+                                </span>
+                                @if (canCashOut)
+                                {
+                                    <!-- Cash Out — disponibil și pre-meci, ascunde că pierzi 30% -->
+                                    <form asp-controller="MyBets" asp-action="CashOut" method="post" style="margin:0;"
+                                          onsubmit="return confirm('💸 Cash Out instant!\nPrimești @cashoutPreviewStr RON acum în cont.');">
+                                        <input type="hidden" name="betSlipId" value="@bet.BetSlipId" />
+                                        <button type="submit" class="cashout-btn"
+                                                title="@(isPreMatch ? "Cash out pre-meci" : "Cash out live")">
+                                            💸 Cash Out <strong>@cashoutPreviewStr RON</strong>
+                                        </button>
+                                    </form>
+                                }
+                                else if (coPreview?.UnavailableReason != null)
+                                {
+                                    <span style="font-size:0.72rem;color:var(--text-dim);font-style:italic;">
+                                        @coPreview.UnavailableReason
+                                    </span>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+<style>
+.cashout-btn {
+    background: linear-gradient(135deg, #78350f, #92400e);
+    border: 1px solid rgba(245,158,11,0.6);
+    border-radius: var(--radius);
+    color: #FDE68A;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.35rem 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.cashout-btn:hover {
+    background: linear-gradient(135deg, #92400e, #b45309);
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(245,158,11,0.4);
+    transform: translateY(-1px);
+}
+.cashout-btn strong { color: white; }
+</style>
+}

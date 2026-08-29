@@ -1,0 +1,172 @@
+﻿@model List<BetLab.EthicalWeb.Models.AdminExclusionViewModel>
+@{
+    ViewData["Title"] = "Admin — Excluderi";
+    int activeCount = Model.Count(e => e.IsActive);
+    var cnpExclusions = ViewBag.CnpExclusions as List<BetLab.EthicalWeb.Models.CnpExclusionViewModel>
+                        ?? new List<BetLab.EthicalWeb.Models.CnpExclusionViewModel>();
+}
+
+
+<div class="eth-page-header mb-3">
+    <div>
+        <h1 class="eth-page-title">🪪 Registru CNP Autoexcludere</h1>
+        <p class="eth-page-subtitle">
+            @cnpExclusions.Count CNP-uri blocate — simulare Registru ONJN (Oficiul Național pentru Jocuri de Noroc)
+        </p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+</div>
+
+<div class="alert alert-info mb-4" style="align-items:flex-start;">
+    <i data-lucide="info"></i>
+    <div style="font-size:0.85rem;">
+        La autoexcludere, CNP-ul utilizatorului se adaugă automat în acest registru.
+        Orice tentativă de înregistrare cu același CNP va fi blocată, indiferent de emailul folosit.
+        Ridicarea unui CNP din registru trebuie justificată și documentată.
+    </div>
+</div>
+
+<div class="ethical-panel mb-5">
+    @if (!cnpExclusions.Any())
+    {
+        <p class="ethical-muted text-center py-3">Niciun CNP în registru.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table mb-0" style="font-size:0.85rem;">
+                <thead>
+                    <tr style="font-size:0.72rem;text-transform:uppercase;color:var(--muted);">
+                        <th class="px-3 py-2">CNP (mascat)</th>
+                        <th class="px-3 py-2">Utilizator</th>
+                        <th class="px-3 py-2">Exclus la</th>
+                        <th class="px-3 py-2">Motiv</th>
+                        <th class="px-3 py-2 text-end">Acțiune</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in cnpExclusions)
+                    {
+                        <tr>
+                            <td class="px-3 py-2">
+                                <code style="font-size:0.85rem;">@c.CnpMasked</code>
+                            </td>
+                            <td class="px-3 py-2 ethical-muted">@(c.UserName ?? "—")</td>
+                            <td class="px-3 py-2 ethical-muted">
+                                @c.ExcludedAt.ToRomanianTime().ToString("dd MMM yyyy HH:mm")
+                            </td>
+                            <td class="px-3 py-2 ethical-muted">@(c.Reason ?? "—")</td>
+                            <td class="px-3 py-2 text-end">
+                                <form asp-action="RemoveCnpExclusion" method="post" class="d-inline"
+                                      onsubmit="return confirm('Ridici CNP-ul din registru? Justifică această decizie — va fi auditată.')">
+                                    <input type="hidden" name="cnpId" value="@c.Id" />
+                                    <button class="btn btn-sm btn-outline-danger" style="font-size:0.72rem;">
+                                        <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+                                        Ridică
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">🔒 Cereri auto-excludere</h1>
+        <p class="eth-page-subtitle">@activeCount active · @Model.Count total</p>
+    </div>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+@if (TempData["AdminError"] != null)
+{ <div class="alert alert-danger mb-3">⚠️ @TempData["AdminError"]</div> }
+
+<div class="alert alert-info mb-4" style="font-size:0.82rem;">
+    <strong>ℹ️ Flux auto-excludere:</strong>
+    Utilizatorii solicită excluderea din propriul profil — cererea se aprobă automat.
+    Administratorul poate <strong>ridica</strong> o excludere cu prudență, conform legislației.
+    Excluderile auto-impuse de utilizator nu pot fi ridicate înainte de expirarea perioadei alese.
+</div>
+
+<div class="eth-panel">
+    <div class="eth-panel-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="p-5 text-center text-muted">Nu există cereri de excludere înregistrate.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr style="font-size:0.78rem;text-transform:uppercase;color:#6b7280;letter-spacing:.04em;">
+                            <th class="px-4 py-3">Utilizator</th>
+                            <th class="px-3 py-3">Exclus la</th>
+                            <th class="px-3 py-3">Perioadă</th>
+                            <th class="px-3 py-3">Motiv</th>
+                            <th class="px-3 py-3">Tip</th>
+                            <th class="px-3 py-3">Status</th>
+                            <th class="px-3 py-3 text-end">Acțiune</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ex in Model.OrderByDescending(e => e.IsActive).ThenByDescending(e => e.ExcludedAt))
+                        {
+                            <tr class="@(!ex.IsActive ? "opacity-50" : "")">
+                                <td class="px-4 py-3">
+                                    <div class="fw-semibold">@ex.UserName</div>
+                                    <div class="text-muted small">@ex.UserEmail</div>
+                                </td>
+                                <td class="px-3 py-3 text-muted small">
+                                    @ex.ExcludedAt.ToRomanianTime().ToString("dd MMM yyyy HH:mm")
+                                </td>
+                                <td class="px-3 py-3">
+                                    @if (ex.ExcludedUntil == null)
+                                    { <span class="badge bg-danger">Permanent</span> }
+                                    else
+                                    { <span class="text-warning fw-semibold small">până la @ex.ExcludedUntil.Value.ToRomanianTime().ToString("dd MMM yyyy")</span> }
+                                </td>
+                                <td class="px-3 py-3 text-muted small" style="max-width:180px;">
+                                    @(string.IsNullOrWhiteSpace(ex.Reason) ? "—" : ex.Reason)
+                                </td>
+                                <td class="px-3 py-3">
+                                    <span class="badge @(ex.ImposedBy == "User" ? "bg-info text-dark" : "bg-secondary")">
+                                        @(ex.ImposedBy == "User" ? "Auto-excludere" : "Admin")
+                                    </span>
+                                </td>
+                                <td class="px-3 py-3">
+                                    @if (ex.IsActive)
+                                    { <span class="badge" style="background:#7c3aed;">Activă</span> }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Ridicată</span>
+                                        @if (ex.LiftedAt.HasValue)
+                                        { <div class="text-muted" style="font-size:0.7rem;">@ex.LiftedAt.Value.ToRomanianTime().ToString("dd MMM")</div> }
+                                    }
+                                </td>
+                                <td class="px-3 py-3 text-end">
+                                    @if (ex.IsActive)
+                                    {
+                                        <form asp-action="LiftExclusion" method="post" class="d-inline"
+                                              onsubmit="return confirm('Ridici excluderea lui @ex.UserName?')">
+                                            <input type="hidden" name="exclusionId" value="@ex.Id" />
+                                            <button class="btn btn-sm btn-outline-warning">Ridică</button>
+                                        </form>
+                                    }
+                                    else
+                                    { <span class="text-muted small">—</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

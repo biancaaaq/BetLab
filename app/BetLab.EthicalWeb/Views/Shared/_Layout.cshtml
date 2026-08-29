@@ -1,0 +1,384 @@
+﻿@{
+    var currentUserNameRaw = Context.Session.GetString("Ethical_CurrentUserName") ?? "";
+    var currentUserName = currentUserNameRaw.Contains('@') ? currentUserNameRaw.Split('@')[0] : currentUserNameRaw;
+    var hasToken = !string.IsNullOrWhiteSpace(Context.Session.GetString("Ethical_JwtToken"));
+    var isAdmin  = Context.Session.GetString("Ethical_IsAdmin") == "true";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+
+    string NavActive(string controller) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — BetLab</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/ethical-theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/BetLab.EthicalWeb.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="eth-navbar">
+            <div class="container">
+                <a class="eth-brand" asp-controller="Home" asp-action="Index">
+                    <span class="eth-brand-mark"><i data-lucide="shield-check"></i></span>
+                    <span>BetLab</span>
+                </a>
+
+                <ul class="eth-nav">
+                    <li>
+                        <a class="eth-nav-link @NavActive("Home")" asp-controller="Home" asp-action="Index">
+                            <i data-lucide="home"></i>
+                            <span>Acasă</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="eth-nav-link @NavActive("Events")" asp-controller="Events" asp-action="Index">
+                            <i data-lucide="trophy"></i>
+                            <span>Meciuri</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="eth-nav-link @NavActive("BetSlip")" asp-controller="BetSlip" asp-action="Index">
+                            <i data-lucide="ticket"></i>
+                            <span>Bilet</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="eth-nav-link @NavActive("Casino")" asp-controller="Casino" asp-action="Index">
+                            <i data-lucide="dices"></i>
+                            <span>Cazino</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="eth-nav-link @NavActive("Promotions")" asp-controller="Promotions" asp-action="Index">
+                            <i data-lucide="gift"></i>
+                            <span>Promoții</span>
+                        </a>
+                    </li>
+                    @if (hasToken)
+                    {
+                        <li>
+                            <a class="eth-nav-link @NavActive("MyBets")" asp-controller="MyBets" asp-action="Index">
+                                <i data-lucide="ticket-check"></i>
+                                <span>Biletele mele</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="eth-nav-link @NavActive("Activity")" asp-controller="Activity" asp-action="Index">
+                                <i data-lucide="activity"></i>
+                                <span>Activitate</span>
+                            </a>
+                        </li>
+                        @if (isAdmin)
+                        {
+                            <li>
+                                <a class="eth-nav-link @NavActive("Admin")"
+                                   asp-controller="Admin" asp-action="Index"
+                                   style="color:#f59e0b;font-weight:700;">
+                                    <i data-lucide="shield"></i>
+                                    <span>Admin</span>
+                                </a>
+                            </li>
+                        }
+                    }
+                </ul>
+
+                <div class="eth-nav-right">
+                    @if (!hasToken)
+                    {
+                        <a class="eth-nav-btn-ghost" asp-controller="Account" asp-action="Login">
+                            <i data-lucide="log-in"></i>
+                            <span>Autentificare</span>
+                        </a>
+                        <a class="eth-nav-btn" asp-controller="Account" asp-action="Register">
+                            <i data-lucide="user-plus"></i>
+                            <span>Cont nou</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="eth-user-chip" asp-controller="Account" asp-action="Profile" title="Profilul meu">
+                            <i data-lucide="user"></i>
+                            <span>@currentUserName</span>
+                        </a>
+                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                            <button type="submit" class="eth-logout-btn" title="Deconectare">
+                                <i data-lucide="log-out"></i>
+                                <span>Ieșire</span>
+                            </button>
+                        </form>
+                    }
+                </div>
+
+                <!-- Hamburger — vizibil doar pe mobile -->
+                <button class="eth-nav-toggle" id="ethNavToggle" aria-label="Meniu" aria-expanded="false">
+                    <i data-lucide="menu"></i>
+                </button>
+            </div>
+
+            <!-- Mobile drawer -->
+            <div class="eth-mobile-menu" id="ethMobileMenu">
+                <a class="eth-mobile-nav-link @NavActive("Home")" asp-controller="Home" asp-action="Index">
+                    <i data-lucide="home"></i> Acasă
+                </a>
+                <a class="eth-mobile-nav-link @NavActive("Events")" asp-controller="Events" asp-action="Index">
+                    <i data-lucide="trophy"></i> Meciuri
+                </a>
+                <a class="eth-mobile-nav-link @NavActive("BetSlip")" asp-controller="BetSlip" asp-action="Index">
+                    <i data-lucide="ticket"></i> Bilet
+                </a>
+                <a class="eth-mobile-nav-link @NavActive("Casino")" asp-controller="Casino" asp-action="Index">
+                    <i data-lucide="dices"></i> Cazino
+                </a>
+                <a class="eth-mobile-nav-link @NavActive("Promotions")" asp-controller="Promotions" asp-action="Index">
+                    <i data-lucide="gift"></i> Promoții
+                </a>
+                @if (hasToken)
+                {
+                    <a class="eth-mobile-nav-link @NavActive("MyBets")" asp-controller="MyBets" asp-action="Index">
+                        <i data-lucide="ticket-check"></i> Biletele mele
+                    </a>
+                    <a class="eth-mobile-nav-link @NavActive("Activity")" asp-controller="Activity" asp-action="Index">
+                        <i data-lucide="activity"></i> Activitate
+                    </a>
+                    @if (isAdmin)
+                    {
+                        <a class="eth-mobile-nav-link @NavActive("Admin")" asp-controller="Admin" asp-action="Index"
+                           style="color:#fcd34d;">
+                            <i data-lucide="shield"></i> Admin
+                        </a>
+                    }
+                    <div class="eth-mobile-divider"></div>
+                    <div class="eth-mobile-auth-row">
+                        <a class="eth-user-chip" asp-controller="Account" asp-action="Profile">
+                            <i data-lucide="user"></i>
+                            <span>@currentUserName</span>
+                        </a>
+                        <form asp-controller="Account" asp-action="Logout" method="post" style="margin-left:auto;">
+                            <button type="submit" class="eth-logout-btn">
+                                <i data-lucide="log-out"></i> Ieșire
+                            </button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <div class="eth-mobile-divider"></div>
+                    <div class="eth-mobile-auth-row">
+                        <a class="eth-nav-btn-ghost" asp-controller="Account" asp-action="Login">
+                            <i data-lucide="log-in"></i> Autentificare
+                        </a>
+                        <a class="eth-nav-btn" asp-controller="Account" asp-action="Register">
+                            <i data-lucide="user-plus"></i> Cont nou
+                        </a>
+                    </div>
+                }
+            </div>
+        </nav>
+    </header>
+
+    <main role="main">
+        <div class="container">
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="eth-footer">
+        <div class="container">
+            <div class="eth-responsible-bar">
+                <span class="eth-age-badge">18+</span>
+                <div>
+                    <strong>Joacă responsabil.</strong>
+                    Pariurile pot crea dependență. Dacă simți că jocul îți afectează viața, sună la
+                    <strong>Telverde 0800 800 099</strong> (Promis — Asociația Joc Responsabil, apel gratuit) sau accesează
+                    <a asp-controller="Account" asp-action="Profile">profilul tău</a> pentru limite și auto-excludere.
+                </div>
+            </div>
+
+            <div class="eth-footer-row">
+                <div class="eth-footer-brand">
+                    <span class="eth-brand-mark" style="width:24px;height:24px;border-radius:7px;">
+                        <i data-lucide="shield-check" style="width:13px;height:13px;"></i>
+                    </span>
+                    <span>BetLab &copy; 2026</span>
+                </div>
+                <div class="eth-footer-links">
+                    <a asp-controller="Home" asp-action="Privacy">Confidențialitate</a>
+                    <a asp-controller="Home" asp-action="Privacy">Termeni</a>
+                    <a asp-controller="Account" asp-action="Profile">Limite &amp; auto-excludere</a>
+                </div>
+            </div>
+
+            <div class="text-muted-eth" style="font-size:0.82rem;">
+                BetLab operează exclusiv cu fonduri demonstrative. Nicio tranzacție nu implică bani reali.
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        // Initialize Lucide icons after every render.
+        if (window.lucide) { lucide.createIcons(); }
+
+        // Mobile nav toggle
+        (function () {
+            var toggle = document.getElementById('ethNavToggle');
+            var menu   = document.getElementById('ethMobileMenu');
+            if (!toggle || !menu) return;
+
+            function setIcon(open) {
+                var icon = toggle.querySelector('[data-lucide]');
+                if (icon) {
+                    icon.setAttribute('data-lucide', open ? 'x' : 'menu');
+                    if (window.lucide) lucide.createIcons();
+                }
+            }
+
+            toggle.addEventListener('click', function () {
+                var open = menu.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                setIcon(open);
+            });
+
+            menu.querySelectorAll('a').forEach(function (a) {
+                a.addEventListener('click', function () {
+                    menu.classList.remove('open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                    setIcon(false);
+                });
+            });
+        })();
+    </script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        // Helper global pentru logging client-side.
+        // Trimite evenimentul la /logging/proxy; sessionId/userId vin din sesiunea server.
+        window.ethLog = function (eventType, pageName, opts) {
+            var payload = Object.assign({ eventType: eventType, pageName: pageName }, opts || {});
+            fetch('/logging/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true
+            }).then(function (r) {
+                if (!r.ok) console.warn('[ethLog] failed:', eventType, r.status);
+            }).catch(function (e) {
+                console.error('[ethLog] error:', eventType, e);
+            });
+        };
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+@if (!string.IsNullOrWhiteSpace(Context.Session.GetString("Ethical_JwtToken")))
+{
+    <!-- ── Reality check modal ─────────────────────────────────────── -->
+    <div id="reality-check-overlay"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);
+                z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:2rem;max-width:420px;width:90%;
+                    box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:inherit;">
+            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
+                <span style="background:#EFF6FF;border-radius:8px;padding:0.4rem;display:flex;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </span>
+                <strong style="font-size:1rem;color:#111827;">Pauză de gândire</strong>
+            </div>
+            <p style="color:#374151;font-size:0.9rem;line-height:1.6;margin-bottom:1rem;">
+                Ești în sesiune de <strong id="rc-elapsed">—</strong>.
+                Ia un moment să reflectezi înainte de a continua.
+            </p>
+            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;
+                        padding:0.75rem 1rem;margin-bottom:1.25rem;font-size:0.85rem;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;">
+                    <span style="color:#6B7280;">Timp în sesiune</span>
+                    <strong id="rc-elapsed-detail">—</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:#6B7280;">Joc responsabil</span>
+                    <a href="/Account/Profile" style="color:#2563EB;font-size:0.82rem;">
+                        Setează limite →
+                    </a>
+                </div>
+            </div>
+            <div style="display:flex;gap:0.75rem;">
+                <a href="/Account/Profile" style="flex:1;text-align:center;padding:0.6rem;
+                    border:1px solid #D1D5DB;border-radius:8px;color:#374151;
+                    font-size:0.85rem;font-weight:600;text-decoration:none;">
+                    Profil &amp; limite
+                </a>
+                <button onclick="dismissRealityCheck()"
+                        style="flex:2;padding:0.6rem;background:#2563EB;color:#fff;
+                               border:none;border-radius:8px;font-size:0.85rem;
+                               font-weight:700;cursor:pointer;">
+                    Continuă sesiunea
+                </button>
+            </div>
+            <p style="font-size:0.75rem;color:#9CA3AF;text-align:center;margin-top:0.75rem;margin-bottom:0;">
+                Telverde joc responsabil: <strong>0800 800 099</strong> (apel gratuit)
+            </p>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var INTERVAL_MS = 30 * 60 * 1000; // 30 minute
+        var KEY_START   = 'eth_sess_start';
+        var KEY_LAST    = 'eth_sess_last_check';
+
+        // Setăm startul sesiunii dacă nu există
+        if (!sessionStorage.getItem(KEY_START)) {
+            sessionStorage.setItem(KEY_START, Date.now().toString());
+        }
+        if (!sessionStorage.getItem(KEY_LAST)) {
+            sessionStorage.setItem(KEY_LAST, Date.now().toString());
+        }
+
+        function formatElapsed(ms) {
+            var totalMin = Math.floor(ms / 60000);
+            var h = Math.floor(totalMin / 60);
+            var m = totalMin % 60;
+            if (h > 0) return h + ' h ' + m + ' min';
+            return m + ' min';
+        }
+
+        function showRealityCheck() {
+            var elapsed = Date.now() - parseInt(sessionStorage.getItem(KEY_START) || Date.now());
+            var overlay = document.getElementById('reality-check-overlay');
+            if (!overlay) return;
+            document.getElementById('rc-elapsed').textContent        = formatElapsed(elapsed);
+            document.getElementById('rc-elapsed-detail').textContent = formatElapsed(elapsed);
+            overlay.style.display = 'flex';
+            sessionStorage.setItem(KEY_LAST, Date.now().toString());
+        }
+
+        window.dismissRealityCheck = function () {
+            var overlay = document.getElementById('reality-check-overlay');
+            if (overlay) overlay.style.display = 'none';
+        };
+
+        // Verificăm la fiecare minut dacă a trecut intervalul
+        setInterval(function () {
+            var lastCheck = parseInt(sessionStorage.getItem(KEY_LAST) || '0');
+            if (Date.now() - lastCheck >= INTERVAL_MS) {
+                showRealityCheck();
+            }
+        }, 60 * 1000);
+    })();
+    </script>
+}
+</body>
+</html>

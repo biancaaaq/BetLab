@@ -1,0 +1,587 @@
+﻿@model List<BetLab.DarkWeb.Models.EventDetailsViewModel>
+@using BetLab.DarkWeb.Models
+@using BetLab.DarkWeb.Services
+@{
+    ViewData["Title"] = "Meciuri";
+    var rand = new Random();
+    var hotIndexes = new HashSet<int>(Enumerable.Range(0, Model.Count).OrderBy(_ => rand.Next()).Take(2));
+    var viewers = new[] { 234, 187, 412, 98, 315, 276, 143, 509, 88, 362 };
+    int currentPage = ViewBag.CurrentPage;
+    int totalPages  = ViewBag.TotalPages;
+    int totalCount  = ViewBag.TotalCount;
+
+    var slipItems = Context.Session.GetObject<List<BetSlipItemViewModel>>("Dark_BetSlip") ?? new();
+    decimal totalOdds = slipItems.Any()
+        ? decimal.Round(slipItems.Select(x => x.Odds).Aggregate(1m, (a, b) => a * b), 2, MidpointRounding.AwayFromZero)
+        : 0m;
+}
+
+<!-- Header -->
+<div class="dark-page-header" style="margin-bottom:0.75rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+            <h1 class="dark-page-title" style="margin-bottom:0.1rem;">🔥 Meciuri Live</h1>
+            <p class="dark-page-subtitle" style="margin:0;">Cotele se actualizează în timp real — nu rata momentul!</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <div class="dark-urgency-bar" style="flex-shrink:0;margin:0;padding:0.4rem 1rem;">
+                ⚡ Ofertă expiră în <span id="offer-timer">14:59</span>
+            </div>
+            <span class="dark-chip dark-chip-red">@totalCount meciuri</span>
+        </div>
+    </div>
+</div>
+
+<!-- Ticker -->
+<div class="dark-ticker" style="margin-bottom:0.75rem;">
+    <div class="dark-ticker-inner">
+        🏆 <span class="dark-ticker-win">Mihai P. a câștigat 1.420 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Elena D. a câștigat 340 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Radu C. a câștigat 3.200 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Ana S. a câștigat 175 RON</span> &nbsp;·&nbsp;
+        🏆 <span class="dark-ticker-win">Vlad N. a câștigat 4.800 RON</span> &nbsp;·&nbsp;
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="dark-alert dark-alert-success mb-3">
+        🏆 Pariu plasat cu succes! <a asp-controller="MyBets" asp-action="Index" style="color:#34D399;font-weight:700;">Vezi biletele mele →</a>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-3">⚠️ @TempData["Error"]</div>
+}
+
+<!-- Layout: meciuri stânga + bilet dreapta -->
+<div style="display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start;">
+
+<!-- Stânga: carduri meciuri -->
+<div>
+        <div class="dark-events-grid">
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var item = Model[i];
+                var isHot = hotIndexes.Contains(i);
+                var viewerCount = viewers[i % viewers.Length];
+                var mainMarket = item.Markets.FirstOrDefault(m => m.IsMain) ?? item.Markets.FirstOrDefault();
+                var outcomes   = mainMarket?.Outcomes ?? new();
+                var home = outcomes.FirstOrDefault(o => o.Code == "1" || o.Code == "Home");
+                var draw = outcomes.FirstOrDefault(o => o.Code == "X" || o.Code == "Draw");
+                var away = outcomes.FirstOrDefault(o => o.Code == "2" || o.Code == "Away");
+
+                <div class="dark-event-card @(item.IsLive ? "dark-event-card--live" : "")">
+                    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:0.4rem;">
+                        <div style="display:flex;align-items:center;gap:0.4rem;">
+                            @if (item.IsLive)
+                            {
+                                <span class="live-badge"><span class="dark-live-dot"></span> LIVE</span>
+                            }
+                            else if (isHot)
+                            {
+                                <span class="hot-badge">🔥 HOT</span>
+                            }
+                            else
+                            {
+                                <span></span>
+                            }
+                        </div>
+                        <span style="font-size:0.7rem;color:var(--primary);font-weight:600;">👁 @viewerCount pariează</span>
+                    </div>
+
+                    <a asp-controller="Events" asp-action="Details" asp-route-id="@item.EventId"
+                       class="dark-event-card__title">
+                        @item.HomeTeam vs @item.AwayTeam
+                    </a>
+
+                    @if (item.IsLive && (item.HomeScore.HasValue || item.AwayScore.HasValue))
+                    {
+                        <div class="live-score-row">
+                            <span class="live-score-team">@item.HomeTeam</span>
+                            <span class="live-score-box">@(item.HomeScore ?? 0) – @(item.AwayScore ?? 0)</span>
+                            <span class="live-score-team">@item.AwayTeam</span>
+                        </div>
+                    }
+
+                    <div class="dark-event-card__meta">
+                        @item.CompetitionName · @(item.IsLive ? "🔴 Live" : item.StartTimeUtc.ToRomanianTime().ToString("dd MMM · HH:mm"))
+                    </div>
+
+                    <div class="dark-event-card__odds">
+                        @{
+                            var oddsData = new[] {
+                                (home?.OutcomeId, "1", home?.Odds),
+                                (draw?.OutcomeId, "X", draw?.Odds),
+                                (away?.OutcomeId, "2", away?.Odds),
+                            };
+                            // cel mult o cotă per meci afișează săgeata; 50% șansă să apară deloc
+                            var droppingIndex = rand.Next(0, 6) < 3 ? rand.Next(0, 3) : -1;
+                            int oddsIdx = 0;
+                        }
+                        @foreach (var (oid, label, odds) in oddsData)
+                        {
+                            var dropping = oddsIdx == droppingIndex;
+                            if (oid.HasValue)
+                            {
+                                var inSlip = slipItems.Any(s => s.OutcomeId == oid.Value);
+                                <a asp-controller="BetSlip" asp-action="AddOutcome" asp-route-outcomeId="@oid"
+                                   class="dark-odd-btn @(inSlip ? "dark-odd-btn--selected" : "") @(dropping ? "dark-odd-btn--dropping" : "")">
+                                    @if (dropping)
+                                    {
+                                        <span class="dark-odd-btn__drop">▼</span>
+                                    }
+                                    <span class="dark-odd-btn__label">@label</span>
+                                    <span class="dark-odd-btn__value">@odds!.Value.ToString("F2")</span>
+                                </a>
+                            }
+                            else
+                            {
+                                <div class="dark-odd-btn dark-odd-btn--empty">—</div>
+                            }
+                            oddsIdx++;
+                        }
+                    </div>
+
+                    @{
+                        // Numără celelalte piețe în afară de 1X2
+                        var extraMarkets = item.Markets.Count - 1;
+                    }
+                    @if (extraMarkets > 0)
+                    {
+                        <a asp-controller="Events" asp-action="Details" asp-route-id="@item.EventId"
+                           class="extra-markets-pill">
+                            <span class="extra-markets-pill__count">+@extraMarkets</span>
+                            <span class="extra-markets-pill__label">cote · vezi analiză →</span>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Paginare -->
+        @if (totalPages > 1)
+        {
+            <div class="dark-pagination" style="margin-top:0.75rem;">
+                @if (currentPage > 1)
+                { <a href="?page=@(currentPage - 1)" class="dark-page-btn">← Anterior</a> }
+                else
+                { <span class="dark-page-btn dark-page-btn--disabled">← Anterior</span> }
+
+                @for (int p = 1; p <= totalPages; p++)
+                {
+                    <a href="?page=@p" class="dark-page-btn @(p == currentPage ? "dark-page-btn--active" : "")">@p</a>
+                }
+
+                @if (currentPage < totalPages)
+                { <a href="?page=@(currentPage + 1)" class="dark-page-btn">Următor →</a> }
+                else
+                { <span class="dark-page-btn dark-page-btn--disabled">Următor →</span> }
+            </div>
+        }
+    </div>
+
+<!-- Dreapta: cardul biletului — sticky -->
+<div style="position:sticky;top:90px;">
+    <div class="dark-panel slip-card">
+        <div class="dark-panel-header dark-panel-header--red">
+            🎯 Biletul meu
+            <span class="dark-chip dark-chip-@(slipItems.Any() ? "red" : "gray") ms-auto"
+                  style="font-size:0.72rem;font-weight:700;">
+                @slipItems.Count selecții
+            </span>
+        </div>
+
+        @if (!slipItems.Any())
+        {
+            <div style="padding:2.5rem 1rem;text-align:center;color:var(--text-muted);">
+                <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎯</div>
+                <p style="font-size:0.85rem;margin:0;line-height:1.6;">
+                    Apasă pe o cotă<br/>pentru a adăuga în bilet.
+                </p>
+            </div>
+        }
+        else
+        {
+            <!-- Selecții -->
+            <div style="max-height:320px;overflow-y:auto;">
+                @foreach (var s in slipItems)
+                {
+                    <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);
+                                display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-size:0.8rem;font-weight:700;color:white;
+                                        margin-bottom:0.15rem;white-space:nowrap;
+                                        overflow:hidden;text-overflow:ellipsis;">
+                                @s.EventName
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-dim);">
+                                @s.MarketName · @s.OutcomeName
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                            <span style="font-weight:800;color:var(--gold);font-size:0.95rem;">
+                                @s.Odds.ToString("F2")
+                            </span>
+                            <form asp-controller="BetSlip" asp-action="Remove" method="post" style="margin:0;">
+                                <input type="hidden" name="outcomeId" value="@s.OutcomeId" />
+                                <input type="hidden" name="ret" value="Events" />
+                                <button type="submit"
+                                        style="background:none;border:none;color:#6B7280;
+                                               cursor:pointer;font-size:0.95rem;padding:0;line-height:1;"
+                                        onmouseover="this.style.color='var(--primary)'"
+                                        onmouseout="this.style.color='#6B7280'">✕</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Cotă totală -->
+            <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);
+                        display:flex;justify-content:space-between;font-size:0.85rem;">
+                <span style="color:var(--text-muted);">Cotă totală</span>
+                <span style="font-weight:800;color:var(--gold);font-size:1rem;">
+                    @totalOdds.ToString("F2")
+                </span>
+            </div>
+
+            <!-- Form plasare -->
+            <div style="padding:0.85rem 1rem;">
+                <form asp-controller="BetSlip" asp-action="Place" method="post">
+                    <input type="hidden" name="ret" value="Events" />
+                    <div style="margin-bottom:0.65rem;">
+                        <label style="font-size:0.75rem;color:var(--text-muted);
+                                      display:block;margin-bottom:0.3rem;">Miză (RON)</label>
+                        <input type="number" name="stake" id="sidebar-stake"
+                               min="1" max="10000" step="0.50" value="50" required
+                               oninput="updateSidebarPayout()"
+                               class="form-control-dark" style="font-size:1rem;font-weight:700;" />
+                    </div>
+                    <div style="display:flex;justify-content:space-between;
+                                align-items:center;margin-bottom:0.8rem;">
+                        <span style="font-size:0.78rem;color:var(--text-muted);">Câștig potențial</span>
+                        <span id="sidebar-payout"
+                              style="font-size:1.2rem;font-weight:900;color:#34D399;">—</span>
+                    </div>
+                    <button type="submit" class="btn-dark-primary pulse w-100"
+                            style="font-size:0.95rem;padding:0.75rem;font-weight:800;">
+                        🎯 PARIAZĂ ACUM!
+                    </button>
+                </form>
+                <form asp-controller="BetSlip" asp-action="Clear" method="post" style="margin-top:0.5rem;">
+                    <input type="hidden" name="ret" value="Events" />
+                    <button type="submit"
+                            style="background:none;border:none;color:var(--text-dim);
+                                   font-size:0.75rem;cursor:pointer;
+                                   width:100%;text-align:center;padding:0.3rem;">
+                        Golește biletul
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+</div>
+
+@section Scripts {
+<script>
+    // Auto-refresh pagina dacă există meciuri live (la 60s — backend sync la 2 min)
+    @if (Model.Any(m => m.IsLive))
+    {
+        <text>
+        (function() {
+            var refreshSec = 60;
+            console.log('[live] Auto-refresh activ — meciuri live detectate. Reîncarc la ' + refreshSec + 's.');
+            setTimeout(function() { window.location.reload(); }, refreshSec * 1000);
+        })();
+        </text>
+    }
+</script>
+<style>
+.dark-events-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+.dark-event-card--live {
+    border-color: rgba(239,68,68,0.5);
+    background: linear-gradient(135deg, rgba(127,29,29,0.18), var(--bg-card));
+}
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--primary);
+    color: white;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    animation: live-pulse 2s ease-in-out infinite;
+}
+@@keyframes live-pulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(220,38,38,0.4); }
+    50%       { box-shadow: 0 0 10px rgba(220,38,38,0.8); }
+}
+.live-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin: 0.2rem 0 0.4rem;
+}
+.live-score-team {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    font-weight: 600;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.live-score-box {
+    background: var(--primary);
+    color: white;
+    font-size: 1rem;
+    font-weight: 900;
+    padding: 0.15rem 0.65rem;
+    border-radius: var(--radius);
+    letter-spacing: 0.05em;
+    min-width: 60px;
+    text-align: center;
+}
+.dark-event-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dark-event-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 12px rgba(220,38,38,0.15);
+}
+.dark-event-card__title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: white;
+    text-decoration: none;
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+    transition: color 0.12s;
+}
+.dark-event-card__title:hover { color: var(--primary-bright); }
+.dark-event-card__meta {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+}
+.dark-event-card__odds {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    width: 100%;
+}
+.dark-odd-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 0.45rem 0.3rem;
+    background: linear-gradient(135deg, #1e1200, #1a1a1a);
+    border: 1px solid rgba(245,158,11,0.35);
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+}
+.dark-odd-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(245,158,11,0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.dark-odd-btn:hover::before { opacity: 1; }
+.dark-odd-btn:hover {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.25);
+}
+.dark-odd-btn--selected {
+    background: linear-gradient(135deg, #2a1500, #1a1a1a);
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(245,158,11,0.4);
+    animation: odd-pulse 2s ease-in-out infinite;
+}
+@@keyframes odd-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.3); }
+    50%       { box-shadow: 0 0 18px rgba(245,158,11,0.65); }
+}
+.dark-odd-btn--dropping {
+    border-color: rgba(239,68,68,0.5);
+    background: linear-gradient(135deg, #1a0a0a, #1a1a1a);
+}
+.dark-odd-btn--dropping:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(220,38,38,0.3);
+}
+.dark-odd-btn__drop {
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #EF4444;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    animation: drop-blink 1.2s ease-in-out infinite;
+}
+@@keyframes drop-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+.dark-odd-btn__label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.dark-odd-btn__value {
+    font-size: 1rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.3;
+}
+.dark-odd-btn--empty {
+    flex: 1; padding: 0.4rem; border: 1px solid var(--border);
+    border-radius: var(--radius); text-align:center;
+    color: var(--text-dim); font-size:0.85rem;
+}
+.extra-markets-pill {
+    margin-top: 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.7rem;
+    background: linear-gradient(135deg, rgba(220,38,38,0.12), rgba(245,158,11,0.08));
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 999px;
+    text-decoration: none !important;
+    transition: all 0.15s;
+}
+.extra-markets-pill:hover {
+    background: linear-gradient(135deg, rgba(220,38,38,0.22), rgba(245,158,11,0.18));
+    border-color: var(--gold);
+    transform: translateY(-1px);
+}
+.extra-markets-pill__count {
+    font-size: 0.82rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.extra-markets-pill__label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+.dark-pagination { display:flex; align-items:center; justify-content:center; gap:0.4rem; }
+.dark-page-btn {
+    display:inline-flex; align-items:center; padding:0.4rem 0.8rem;
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius); font-size:0.8rem; font-weight:600;
+    color:var(--text-muted); text-decoration:none; transition:all 0.12s;
+}
+.dark-page-btn:hover { border-color:var(--primary); color:white; }
+.dark-page-btn--active { background:var(--primary); border-color:var(--primary); color:white; }
+.dark-page-btn--disabled { opacity:0.35; pointer-events:none; }
+</style>
+<style>
+/* Card bilet — vizibil doar când există selecții */
+.slip-card {
+    transition: box-shadow 0.2s;
+}
+@if (slipItems.Any())
+{
+    <text>
+    .slip-card {
+        border-color: rgba(220,38,38,0.4);
+        box-shadow: 0 0 20px rgba(220,38,38,0.12);
+    }
+    </text>
+}
+</style>
+<script>
+var sidebarOdds = @totalOdds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+
+// ── Dark pattern: miza persistă via localStorage ────────────────────
+var STAKE_KEY = 'dark_last_stake';
+(function () {
+    var input = document.getElementById('sidebar-stake');
+    if (!input) return;
+
+    // Restaurare miză salvată
+    var saved = parseFloat(localStorage.getItem(STAKE_KEY));
+    if (!isNaN(saved) && saved > 0) input.value = saved;
+
+    // Salvare la modificare + log StakeChanged
+    var stakeLogTimeout = null;
+    input.addEventListener('input', function () {
+        var v = parseFloat(this.value);
+        if (!isNaN(v) && v > 0) localStorage.setItem(STAKE_KEY, v);
+        clearTimeout(stakeLogTimeout);
+        var captured = v;
+        stakeLogTimeout = setTimeout(function () {
+            if (!isNaN(captured) && captured > 0 && typeof darkLog === 'function') {
+                darkLog('StakeChanged', 'Events', {
+                    targetType: 'StakeInput', targetId: 'sidebar-stake',
+                    newValue: String(captured)
+                });
+            }
+        }, 800);
+    });
+})();
+
+function updateSidebarPayout() {
+    var stake  = parseFloat(document.getElementById('sidebar-stake')?.value) || 0;
+    var payout = stake * sidebarOdds;
+    var el     = document.getElementById('sidebar-payout');
+    if (el) el.textContent = payout > 0
+        ? payout.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' RON'
+        : '—';
+}
+updateSidebarPayout();
+
+(function () {
+    var key = 'dark_offer_end';
+    var end = sessionStorage.getItem(key);
+    if (!end) { end = Date.now() + 15 * 60 * 1000; sessionStorage.setItem(key, end); }
+    function update() {
+        var r = Math.max(0, end - Date.now());
+        var m = Math.floor(r / 60000), s = Math.floor((r % 60000) / 1000);
+        var el = document.getElementById('offer-timer');
+        if (el) el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        if (r > 0) setTimeout(update, 1000);
+        else { sessionStorage.removeItem(key); end = Date.now() + 15 * 60 * 1000; sessionStorage.setItem(key, end); setTimeout(update, 1000); }
+    }
+    update();
+})();
+</script>
+}

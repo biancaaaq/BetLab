@@ -1,0 +1,91 @@
+@model BetLab.EthicalWeb.Models.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin — Dashboard";
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">🛡️ Panou Administrator</h1>
+        <p class="eth-page-subtitle">Statistici generale · BetLab Ethical</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Events"        class="btn btn-outline-primary btn-sm">📅 Evenimente</a>
+        <a asp-action="Users"         class="btn btn-outline-primary btn-sm">👥 Utilizatori</a>
+        <a asp-action="Casino"        class="btn btn-outline-primary btn-sm">🎰 Casino</a>
+        <a asp-action="Transactions"  class="btn btn-outline-secondary btn-sm">💳 Tranzacții</a>
+        <a asp-action="SelfExclusion" class="btn btn-outline-danger btn-sm">🔒 Excluderi</a>
+    </div>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+@if (TempData["AdminError"] != null)
+{ <div class="alert alert-danger mb-3">⚠️ @TempData["AdminError"]</div> }
+
+<!-- KPI -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-primary">@Model.TotalUsers</div>
+                <div class="stat-label">Utilizatori total</div>
+                <div style="font-size:0.75rem;" class="mt-1">
+                    <span class="text-success">@Model.ActiveUsers activi</span> ·
+                    <span class="text-danger">@Model.BlockedUsers blocați</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-success">@Model.ActiveEvents</div>
+                <div class="stat-label">Evenimente active</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-warning">@Model.OpenBets</div>
+                <div class="stat-label">Pariuri deschise</div>
+                <div style="font-size:0.75rem;" class="mt-1">
+                    <span class="text-success">@Model.WonBets câștigate</span> ·
+                    <span class="text-danger">@Model.LostBets pierdute</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="eth-panel text-center">
+            <div class="eth-panel-body">
+                <div class="stat-value text-danger">@Model.ActiveExclusions</div>
+                <div class="stat-label">Excluderi active</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="eth-panel">
+            <div class="eth-panel-body">
+                <h6 class="fw-semibold mb-3 text-muted">Acțiuni rapide</h6>
+                <div class="d-grid gap-2">
+                    <a asp-action="AddEvent"      class="btn btn-primary">+ Adaugă eveniment</a>
+                    <a asp-action="Transactions"  class="btn btn-outline-secondary">💳 Vezi tranzacții</a>
+                    <a asp-action="SelfExclusion" class="btn btn-outline-danger">🔒 Gestionează excluderi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="eth-panel">
+            <div class="eth-panel-body">
+                <h6 class="fw-semibold mb-3 text-muted">Casino azi</h6>
+                <div class="stat-value text-primary">@Model.TodayCasinoRounds</div>
+                <div class="stat-label">runde jucate în ultimele 24h</div>
+            </div>
+        </div>
+    </div>
+</div>

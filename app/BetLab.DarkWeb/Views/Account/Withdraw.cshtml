@@ -1,0 +1,246 @@
+@{
+    ViewData["Title"] = "Retragere";
+    var pendingAmount = TempData["WithdrawPending"] as string;
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">🏦 Retragere fonduri</h1>
+</div>
+
+@if (pendingAmount != null)
+{
+    <!-- Success (fake pending) state -->
+    <div class="dark-panel mb-4" style="border-color:rgba(107,114,128,0.4);">
+        <div class="dark-panel-body" style="text-align:center;padding:2.5rem 1.5rem;">
+            <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
+            <div style="font-size:1.3rem;font-weight:900;color:white;margin-bottom:0.5rem;">Cerere înregistrată</div>
+            <div style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;max-width:420px;margin-left:auto;margin-right:auto;">
+                Cererea ta de retragere de <strong style="color:white;">@pendingAmount RON</strong> a fost înregistrată și urmează să fie procesată de echipa noastră financiară.
+            </div>
+
+            <div style="background:#111;border:1px solid #1F2937;border-radius:var(--radius);padding:1rem 1.5rem;margin-bottom:1.5rem;text-align:left;max-width:360px;margin-left:auto;margin-right:auto;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.82rem;">
+                    <span style="color:var(--text-muted);">Status</span>
+                    <span style="color:#F59E0B;font-weight:700;">În procesare</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;font-size:0.82rem;">
+                    <span style="color:var(--text-muted);">Timp estimat</span>
+                    <span style="color:white;font-weight:600;">3–5 zile lucrătoare</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+                    <span style="color:var(--text-muted);">Sumă</span>
+                    <span style="color:white;font-weight:700;">@pendingAmount RON</span>
+                </div>
+            </div>
+
+            <div style="font-size:0.75rem;color:#4B5563;margin-bottom:1.5rem;line-height:1.6;max-width:400px;margin-left:auto;margin-right:auto;">
+                ⚠️ Retragerile sunt procesate în zilele lucrătoare între 09:00–17:00. Weekendurile și sărbătorile legale nu sunt incluse. Banca ta poate adăuga 1–2 zile suplimentare de procesare.
+            </div>
+
+            <!-- CTA să rămână să joace -->
+            <div style="background:linear-gradient(135deg,rgba(220,38,38,0.12),rgba(220,38,38,0.05));border:1px solid rgba(220,38,38,0.25);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem;">
+                <div style="font-size:0.92rem;font-weight:800;color:white;margin-bottom:0.4rem;">
+                    🎯 Banii nu au plecat încă!
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
+                    Fondurile rămân în contul tău până la finalizarea procesării. Poți paria în continuare și poate câștigi mai mult!
+                </div>
+                <a asp-controller="Events" asp-action="Index"
+                   class="btn-dark-primary pulse"
+                   style="display:inline-block;padding:0.6rem 1.5rem;font-size:0.9rem;font-weight:800;text-decoration:none;">
+                    🔥 CONTINUĂ SĂ PARIEZI
+                </a>
+            </div>
+
+            <a asp-controller="Account" asp-action="Withdraw"
+               style="font-size:0.78rem;color:var(--text-dim);text-decoration:underline;">
+                Fă o altă cerere de retragere
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    @if (TempData["WithdrawError"] != null)
+    {
+        <div class="dark-alert dark-alert-danger mb-4">⚠️ @TempData["WithdrawError"]</div>
+    }
+
+    <div class="row g-4 justify-content-center">
+        <div class="col-lg-6">
+
+            <!-- Discouragement banner -->
+            <div class="dark-panel mb-4" style="background:linear-gradient(135deg,rgba(220,38,38,0.1),rgba(0,0,0,0));border-color:rgba(220,38,38,0.3);">
+                <div class="dark-panel-body" style="padding:1rem 1.25rem;">
+                    <div style="font-size:0.95rem;font-weight:800;color:white;margin-bottom:0.3rem;">
+                        ⚠️ Ești sigur că vrei să retragi?
+                    </div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;">
+                        Ai meciuri active cu cote bune chiar acum. Mulți jucători care retrag pierd bonusuri importante.
+                        Retragerea poate dura <strong style="color:white;">3–5 zile lucrătoare</strong> și este supusă verificărilor KYC.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formular retragere -->
+            <div class="dark-panel mb-4">
+                <div class="dark-panel-header">🏦 Detalii retragere</div>
+                <div class="dark-panel-body">
+                    <form asp-action="Withdraw" method="post" id="withdraw-form">
+
+                        <!-- Sumă -->
+                        <div style="margin-bottom:1.1rem;">
+                            <label class="form-label-dark">Sumă de retras (RON)</label>
+                            <input type="number" name="amount" id="withdraw-amount"
+                                   min="100" max="5000" step="10"
+                                   class="form-control-dark" value="100" required
+                                   oninput="updateWithdrawPreview(this.value)" />
+                            <div style="font-size:0.72rem;color:#4B5563;margin-top:0.3rem;">
+                                Minim 100 RON · Maxim 5.000 RON per tranzacție
+                            </div>
+                        </div>
+
+                        <!-- IBAN -->
+                        <div style="margin-bottom:1.1rem;">
+                            <label class="form-label-dark">IBAN cont bancar</label>
+                            <input type="text" name="iban" id="iban-input"
+                                   class="form-control-dark" placeholder="RO49 AAAA 1B31 0075 9384 0000"
+                                   maxlength="29" required
+                                   oninput="formatIban(this)" style="font-family:monospace;letter-spacing:0.05em;" />
+                            <div style="font-size:0.72rem;color:#4B5563;margin-top:0.3rem;">
+                                Contul trebuie să fie pe numele titularului. Conturile terților sunt respinse.
+                            </div>
+                        </div>
+
+                        <!-- Titular -->
+                        <div style="margin-bottom:1.1rem;">
+                            <label class="form-label-dark">Titular cont</label>
+                            <input type="text" name="accountHolder" class="form-control-dark"
+                                   placeholder="PRENUME NUME" style="text-transform:uppercase;"
+                                   oninput="this.value=this.value.toUpperCase()" required />
+                        </div>
+
+                        <!-- Preview sumă netă -->
+                        <div style="background:rgba(107,114,128,0.08);border:1px solid rgba(107,114,128,0.2);
+                                    border-radius:var(--radius);padding:0.85rem 1rem;margin-bottom:1rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                                <span style="color:var(--text-muted);font-size:0.82rem;">Sumă solicitată</span>
+                                <span id="preview-requested" style="font-size:1rem;font-weight:700;color:white;">100,00 RON</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                                <span style="color:var(--text-muted);font-size:0.82rem;">Taxă procesare</span>
+                                <span style="font-size:0.9rem;color:#4B5563;">0,00 RON</span>
+                            </div>
+                            <div style="border-top:1px solid rgba(107,114,128,0.2);margin-top:0.5rem;padding-top:0.5rem;
+                                        display:flex;justify-content:space-between;">
+                                <span style="font-size:0.82rem;color:var(--text-muted);">Vei primi</span>
+                                <span id="preview-net" style="font-size:1.1rem;font-weight:900;color:#34D399;">100,00 RON</span>
+                            </div>
+                            <div style="font-size:0.7rem;color:#4B5563;margin-top:0.4rem;">
+                                *Banca ta poate reține comisioane suplimentare.
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="confirmWithdraw()"
+                                class="btn-dark-primary w-100"
+                                style="font-size:0.95rem;padding:0.85rem;font-weight:800;background:#374151;border-color:#4B5563;">
+                            Trimite cererea de retragere
+                        </button>
+
+                        <!-- CTA mai proeminent să joace -->
+                        <div style="text-align:center;margin-top:0.85rem;">
+                            <a asp-controller="Events" asp-action="Index"
+                               class="btn-dark-primary pulse w-100"
+                               style="display:block;padding:0.85rem;font-size:1rem;font-weight:900;text-decoration:none;">
+                                🔥 MAI BINE PARIEZ ACUM!
+                            </a>
+                            <div style="font-size:0.7rem;color:#4B5563;margin-top:0.35rem;">
+                                Cote excelente disponibile chiar acum
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info procesare -->
+            <div class="dark-panel mb-4">
+                <div class="dark-panel-header" style="font-size:0.82rem;">📋 Informații procesare</div>
+                <div class="dark-panel-body" style="padding:0.75rem 1rem;">
+                    <ul style="font-size:0.78rem;color:var(--text-muted);line-height:2;margin:0;padding-left:1.2rem;">
+                        <li>Retragerile sunt procesate în 3–5 <strong style="color:white;">zile lucrătoare</strong></li>
+                        <li>Suma minimă per retragere: <strong style="color:white;">100 RON</strong></li>
+                        <li>Suma maximă per zi: <strong style="color:white;">5.000 RON</strong></li>
+                        <li>Verificare identitate (KYC) necesară pentru prima retragere</li>
+                        <li>Bonusurile active <strong style="color:var(--primary);">se anulează</strong> la retragere</li>
+                        <li>Rulajul incomplet <strong style="color:var(--primary);">se pierde</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal confirmare -->
+    <div id="confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);
+         z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#161616;border:1px solid #374151;border-radius:var(--radius-lg);
+                    padding:2rem;max-width:400px;width:90%;text-align:center;">
+            <div style="font-size:2rem;margin-bottom:1rem;">⚠️</div>
+            <div style="font-size:1.1rem;font-weight:900;color:white;margin-bottom:0.5rem;">Confirmi retragerea?</div>
+            <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;line-height:1.6;">
+                Prin retragere <strong style="color:var(--primary);">bonusul tău activ va fi anulat</strong>
+                și rulajul acumulat se va pierde.
+            </div>
+            <div id="confirm-amount-text" style="font-size:1.3rem;font-weight:900;color:white;margin-bottom:1.25rem;"></div>
+            <div style="display:flex;gap:0.75rem;justify-content:center;">
+                <button onclick="cancelWithdraw()"
+                        class="btn-dark-primary pulse"
+                        style="flex:1;padding:0.75rem;font-size:0.95rem;font-weight:900;">
+                    🔥 Mai pariez!
+                </button>
+                <button onclick="submitWithdraw()"
+                        style="flex:1;padding:0.75rem;font-size:0.85rem;font-weight:600;
+                               background:#1F2937;border:1px solid #374151;border-radius:var(--radius);
+                               color:#9CA3AF;cursor:pointer;">
+                    Retrag totuși
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+function updateWithdrawPreview(val) {
+    var amt = parseFloat(val) || 0;
+    var fmt = amt.toLocaleString('ro-RO', {minimumFractionDigits:2});
+    document.getElementById('preview-requested').textContent = fmt + ' RON';
+    document.getElementById('preview-net').textContent = fmt + ' RON';
+}
+
+function formatIban(el) {
+    var val = el.value.replace(/\s/g, '').toUpperCase();
+    var chunks = val.match(/.{1,4}/g) || [];
+    el.value = chunks.join(' ');
+}
+
+function confirmWithdraw() {
+    var amt = parseFloat(document.getElementById('withdraw-amount').value) || 0;
+    if (amt < 100) { alert('Suma minimă de retragere este 100 RON.'); return; }
+    document.getElementById('confirm-amount-text').textContent =
+        amt.toLocaleString('ro-RO', {minimumFractionDigits:2}) + ' RON';
+    var overlay = document.getElementById('confirm-overlay');
+    overlay.style.display = 'flex';
+}
+
+function cancelWithdraw() {
+    document.getElementById('confirm-overlay').style.display = 'none';
+}
+
+function submitWithdraw() {
+    document.getElementById('confirm-overlay').style.display = 'none';
+    document.getElementById('withdraw-form').submit();
+}
+</script>
+}

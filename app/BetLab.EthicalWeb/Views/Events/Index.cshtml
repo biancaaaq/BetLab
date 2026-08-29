@@ -1,0 +1,366 @@
+﻿@model List<BetLab.EthicalWeb.Models.EventDetailsViewModel>
+@using BetLab.EthicalWeb.Models
+@using BetLab.EthicalWeb.Services
+@{
+    ViewData["Title"] = "Meciuri";
+    var roCulture = new System.Globalization.CultureInfo("ro-RO");
+    int currentPage = ViewBag.CurrentPage;
+    int totalPages  = ViewBag.TotalPages;
+    int totalCount  = ViewBag.TotalCount;
+
+    var slipItems = Context.Session.GetObject<List<BetSlipItemViewModel>>("Ethical_BetSlip") ?? new();
+    decimal totalOdds = slipItems.Any() ? slipItems.Select(x => x.Odds).Aggregate(1m, (a, b) => a * b) : 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="mb-1">Meciuri disponibile</h1>
+        <p class="ethical-muted mb-0">Cotele sunt afișate alături de probabilitatea implicită de câștig.</p>
+    </div>
+    <span class="rtp-badge">
+        <i data-lucide="list"></i>
+        <span>@totalCount @(totalCount == 1 ? "meci" : "meciuri")</span>
+    </span>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success mb-3">
+        <i data-lucide="check-circle"></i>
+        <div>@TempData["Success"] <a asp-controller="MyBets" asp-action="Index" style="font-weight:700;">Vezi biletele →</a></div>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger mb-3">
+        <i data-lucide="alert-circle"></i>
+        <div>@TempData["Error"]</div>
+    </div>
+}
+@if (TempData["AuthInfo"] != null)
+{
+    <!-- Etic: mesaj informativ, calm, cu opțiuni echivalente Login / Register -->
+    <div class="alert alert-info mb-3" style="align-items:flex-start;">
+        <i data-lucide="info"></i>
+        <div style="flex:1;">
+            <strong style="display:block;margin-bottom:0.35rem;">Ai nevoie de un cont pentru a paria</strong>
+            <div style="font-size:0.88rem;line-height:1.5;margin-bottom:0.6rem;">
+                @TempData["AuthInfo"]
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-sm">
+                    <i data-lucide="log-in"></i>
+                    <span>Autentificare</span>
+                </a>
+                <a asp-controller="Account" asp-action="Register" class="btn btn-outline-primary btn-sm">
+                    <i data-lucide="user-plus"></i>
+                    <span>Creează cont</span>
+                </a>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="ethical-panel text-center" style="padding:3rem 1.5rem;">
+        <i data-lucide="calendar-x" style="width:48px;height:48px;color:var(--muted);margin-bottom:1rem;"></i>
+        <h3>Niciun meci momentan</h3>
+        <p class="ethical-muted mb-0">Reveniți mai târziu pentru meciuri noi.</p>
+    </div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:1.25rem;align-items:start;">
+
+        <!-- Stânga: carduri meciuri -->
+        <div>
+            <div class="match-list">
+                @foreach (var item in Model)
+                {
+                    var mainMarket = item.Markets.FirstOrDefault(m => m.IsMain) ?? item.Markets.FirstOrDefault();
+                    var outcomes   = mainMarket?.Outcomes ?? new();
+                    var home = outcomes.FirstOrDefault(o => o.Code == "1" || o.Code == "Home");
+                    var draw = outcomes.FirstOrDefault(o => o.Code == "X" || o.Code == "Draw");
+                    var away = outcomes.FirstOrDefault(o => o.Code == "2" || o.Code == "Away");
+
+                    <div class="match-card">
+                        <div class="match-meta">
+                            <span class="match-meta-chip">
+                                <i data-lucide="trophy"></i>
+                                <span>@item.CompetitionName</span>
+                            </span>
+                            <span class="match-meta-chip">
+                                <i data-lucide="clock"></i>
+                                <span>@item.StartTimeUtc.ToRomanianTime().ToString("dd MMM, HH:mm", roCulture)</span>
+                            </span>
+                            @if (item.IsLive)
+                            {
+                                <span class="match-meta-chip" style="background:var(--danger-soft);color:#991B1B;">
+                                    <i data-lucide="radio"></i>
+                                    <span>Live</span>
+                                </span>
+                            }
+                        </div>
+
+                        <div class="match-teams">
+                            <a asp-controller="Events" asp-action="Details" asp-route-id="@item.EventId"
+                               class="match-team" style="text-decoration:none;color:inherit;">@item.HomeTeam</a>
+                            @if ((item.IsLive || item.Status == "Finished") && (item.HomeScore.HasValue || item.AwayScore.HasValue))
+                            {
+                                <span style="font-size:1.1rem;font-weight:800;padding:0.2rem 0.6rem;
+                                             border-radius:6px;background:@(item.IsLive ? "#FEE2E2" : "#E5E7EB");
+                                             color:@(item.IsLive ? "#991B1B" : "#374151");">
+                                    @(item.HomeScore ?? 0) – @(item.AwayScore ?? 0)
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="match-vs">vs</span>
+                            }
+                            <a asp-controller="Events" asp-action="Details" asp-route-id="@item.EventId"
+                               class="match-team" style="text-decoration:none;color:inherit;">@item.AwayTeam</a>
+                        </div>
+
+                        <!-- Cote cu probabilitate implicită -->
+                        @if (home != null || draw != null || away != null)
+                        {
+                            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                                @{
+                                    var oddsData = new[]
+                                    {
+                                        (home?.OutcomeId, "1", home?.Name ?? "1", home?.Odds),
+                                        (draw?.OutcomeId, "X", draw?.Name ?? "X", draw?.Odds),
+                                        (away?.OutcomeId, "2", away?.Name ?? "2", away?.Odds),
+                                    };
+                                }
+                                @foreach (var (oid, label, name, odds) in oddsData)
+                                {
+                                    if (oid.HasValue && odds.HasValue)
+                                    {
+                                        var inSlip = slipItems.Any(s => s.OutcomeId == oid.Value);
+                                        var prob = (int)Math.Round(100.0 / (double)odds.Value);
+                                        <a asp-controller="BetSlip" asp-action="AddOutcome"
+                                           asp-route-outcomeId="@oid" asp-route-ret="Events"
+                                           class="eth-odd-btn @(inSlip ? "eth-odd-btn--selected" : "")">
+                                            <span class="eth-odd-label">@label</span>
+                                            <span class="eth-odd-value">@odds.Value.ToString("F2")</span>
+                                            <span class="eth-odd-prob">~@prob%</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <div class="eth-odd-btn eth-odd-btn--empty">—</div>
+                                    }
+                                }
+                                <a asp-controller="Events" asp-action="Details" asp-route-id="@item.EventId"
+                                   class="btn btn-outline-secondary btn-sm" style="margin-left:auto;align-self:center;white-space:nowrap;">
+                                    <i data-lucide="eye" style="width:14px;height:14px;"></i>
+                                    <span>Toate cotele</span>
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="match-card-actions" style="margin-top:0.75rem;">
+                                <a asp-controller="Events" asp-action="Details" asp-route-id="@item.EventId" class="btn btn-outline-primary btn-sm">
+                                    <i data-lucide="eye"></i>
+                                    <span>Vezi cotele</span>
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Paginare -->
+            @if (totalPages > 1)
+            {
+                <div style="display:flex;align-items:center;justify-content:center;gap:0.4rem;margin-top:1rem;">
+                    @if (currentPage > 1)
+                    {
+                        <a href="?page=@(currentPage - 1)" class="btn btn-outline-secondary btn-sm">← Anterior</a>
+                    }
+                    else
+                    {
+                        <span class="btn btn-outline-secondary btn-sm disabled">← Anterior</span>
+                    }
+
+                    @for (int p = 1; p <= totalPages; p++)
+                    {
+                        <a href="?page=@p" class="btn btn-sm @(p == currentPage ? "btn-primary" : "btn-outline-secondary")">@p</a>
+                    }
+
+                    @if (currentPage < totalPages)
+                    {
+                        <a href="?page=@(currentPage + 1)" class="btn btn-outline-secondary btn-sm">Următor →</a>
+                    }
+                    else
+                    {
+                        <span class="btn btn-outline-secondary btn-sm disabled">Următor →</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Dreapta: sidebar bilet -->
+        <div style="position:sticky;top:80px;">
+            <div class="ethical-panel">
+                <div class="ethical-panel-header">
+                    <div class="ethical-panel-title">
+                        <i data-lucide="ticket"></i>
+                        <span>Biletul meu</span>
+                    </div>
+                    <span class="rtp-badge" style="font-size:0.72rem;">@slipItems.Count selecții</span>
+                </div>
+
+                @if (!slipItems.Any())
+                {
+                    <div style="padding:2rem 1rem;text-align:center;color:var(--muted);">
+                        <i data-lucide="ticket" style="width:32px;height:32px;margin-bottom:0.5rem;opacity:0.4;"></i>
+                        <p style="font-size:0.82rem;margin:0;">Apasă pe o cotă pentru a adăuga în bilet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div style="max-height:280px;overflow-y:auto;">
+                        @foreach (var s in slipItems)
+                        {
+                            <div style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+                                <div style="min-width:0;flex:1;">
+                                    <div style="font-size:0.78rem;font-weight:700;margin-bottom:0.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@s.EventName</div>
+                                    <div style="font-size:0.7rem;color:var(--muted);">@s.MarketName · @s.OutcomeName</div>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0;">
+                                    <span style="font-weight:700;color:var(--primary);font-size:0.88rem;">@s.Odds.ToString("F2")</span>
+                                    <form asp-controller="BetSlip" asp-action="Remove" method="post" style="margin:0;">
+                                        <input type="hidden" name="outcomeId" value="@s.OutcomeId" />
+                                        <input type="hidden" name="ret" value="Events" />
+                                        <button type="submit" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:0;line-height:1;">✕</button>
+                                    </form>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.82rem;">
+                        <span class="ethical-muted">Cotă totală</span>
+                        <strong>@totalOdds.ToString("F2")</strong>
+                    </div>
+
+                    <div style="padding:0.75rem 1rem;">
+                        <form asp-controller="BetSlip" asp-action="Place" method="post">
+                            <input type="hidden" name="ret" value="Events" />
+                            <div style="margin-bottom:0.6rem;">
+                                <label class="form-label" style="font-size:0.78rem;">Miză (RON)</label>
+                                <input type="number" name="stake" min="1" max="10000" step="0.5"
+                                       class="form-control form-control-sm" value="10" required
+                                       id="sidebar-stake" oninput="updateSidebarPayout()" />
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;font-size:0.82rem;">
+                                <span class="ethical-muted">Câștig potențial</span>
+                                <span id="sidebar-payout" style="font-weight:700;color:var(--primary);">—</span>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 btn-sm" style="padding:0.6rem;">
+                                <i data-lucide="ticket-check"></i>
+                                <span>Pariază</span>
+                            </button>
+                        </form>
+
+                        <form asp-controller="BetSlip" asp-action="Clear" method="post" style="margin-top:0.4rem;">
+                            <input type="hidden" name="ret" value="Events" />
+                            <button type="submit" style="background:none;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;width:100%;text-align:center;padding:0.25rem;">
+                                Golește biletul
+                            </button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+}
+
+@section Scripts {
+<script>
+    // Auto-refresh pagina dacă există meciuri live (la 60s — backend sync la 2 min, deci suficient)
+    @if (Model.Any(m => m.IsLive))
+    {
+        <text>
+        (function() {
+            var refreshSec = 60;
+            console.log('[live] Auto-refresh activ — meciuri live detectate. Reîncarc la ' + refreshSec + 's.');
+            setTimeout(function() { window.location.reload(); }, refreshSec * 1000);
+        })();
+        </text>
+    }
+</script>
+<style>
+.eth-odd-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    padding: 0.4rem 0.3rem;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: all 0.12s;
+    min-width: 0;
+}
+.eth-odd-btn:hover {
+    border-color: var(--primary);
+    background: #EFF6FF;
+}
+.eth-odd-btn--selected {
+    border-color: var(--primary);
+    background: #DBEAFE;
+}
+.eth-odd-btn--empty {
+    flex: 1;
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+.eth-odd-label { font-size: 0.62rem; color: var(--muted); line-height: 1; }
+.eth-odd-value { font-size: 0.92rem; font-weight: 700; color: var(--primary); line-height: 1.3; }
+.eth-odd-prob  { font-size: 0.6rem; color: var(--muted); line-height: 1; }
+</style>
+<script>
+var sidebarOdds = @totalOdds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+
+function updateSidebarPayout() {
+    var stake = parseFloat(document.getElementById('sidebar-stake')?.value) || 0;
+    var payout = stake * sidebarOdds;
+    var el = document.getElementById('sidebar-payout');
+    if (el) el.textContent = payout > 0
+        ? payout.toLocaleString('ro-RO', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' RON'
+        : '—';
+}
+updateSidebarPayout();
+
+// Log StakeChanged cu debounce
+(function () {
+    var input = document.getElementById('sidebar-stake');
+    if (!input) return;
+    var stakeLogTimeout = null;
+    input.addEventListener('input', function () {
+        var v = parseFloat(this.value);
+        clearTimeout(stakeLogTimeout);
+        stakeLogTimeout = setTimeout(function () {
+            if (!isNaN(v) && v > 0 && typeof ethLog === 'function') {
+                ethLog('StakeChanged', 'Events', {
+                    targetType: 'StakeInput', targetId: 'sidebar-stake',
+                    newValue: String(v)
+                });
+            }
+        }, 800);
+    });
+})();
+</script>
+}

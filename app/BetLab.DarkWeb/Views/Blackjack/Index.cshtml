@@ -1,0 +1,332 @@
+@model BetLab.DarkWeb.Models.BlackjackPageViewModel
+@{
+    ViewData["Title"] = "Blackjack";
+    var s = Model.State;
+
+    string SuitColor(string card) =>
+        card.Contains('♥') || card.Contains('♦') ? "bj-card--red" : "bj-card--black";
+
+    string SuitSymbol(string card)
+    {
+        if (card.Contains('♠')) return "♠";
+        if (card.Contains('♥')) return "♥";
+        if (card.Contains('♦')) return "♦";
+        if (card.Contains('♣')) return "♣";
+        return "";
+    }
+
+    string CardRank(string card) => card == "?" ? "?" :
+        card.Replace("♠","").Replace("♥","").Replace("♦","").Replace("♣","");
+
+    var isActive   = s != null && !s.IsFinished;
+    var isFinished = s != null && s.IsFinished;
+    var isWin      = isFinished && (s!.Status == "PlayerWin" || s.Status == "DealerBust" || s.Status == "Blackjack");
+    var isPush     = isFinished && s!.Status == "Push";
+    var isNearMiss = isFinished && !isWin && !isPush && s!.PlayerTotal >= 18;
+}
+
+<div class="dark-page-header">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+        <div>
+            <h1 class="dark-page-title">🃏 Blackjack</h1>
+            <p class="dark-page-subtitle">Bate dealerul · Câștig până la 2.5× miză</p>
+        </div>
+        <div class="dark-chip dark-chip-gold" style="font-size:0.9rem;padding:0.4rem 1rem;animation:hot-flash 2s infinite;">
+            🔥 <span id="bj-live">@(new Random().Next(60,140))</span> jucători activi
+        </div>
+    </div>
+</div>
+
+<div class="dark-urgency-bar mb-4">
+    🃏 <strong style="color:white;margin:0 0.25rem;">@(new Random().Next(5,15)) mese câștigătoare</strong>
+    în ultimele 10 minute! Masa ta te așteaptă!
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-3">⚠️ @TempData["Error"]</div>
+}
+
+<div style="max-width:680px;margin:0 auto;">
+
+    <!-- Masa de joc -->
+    <div class="dark-panel mb-4" style="background:radial-gradient(ellipse at center, #0f4c1a 0%, #0a3312 60%, #071a09 100%);
+         border:2px solid #2d6a3f;min-height:420px;position:relative;">
+
+        @if (isFinished)
+        {
+            @if (isWin)
+            {
+                <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:5;
+                             background:radial-gradient(ellipse at center, rgba(245,158,11,0.15) 0%, transparent 70%);
+                             animation:hot-flash 1s infinite;"></div>
+            }
+        }
+
+        <div class="dark-panel-body" style="padding:1.5rem;">
+
+            <!-- Cărțile dealerului -->
+            <div style="margin-bottom:1.5rem;">
+                <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;
+                             letter-spacing:0.1em;margin-bottom:0.6rem;">
+                    Dealer
+                    @if (s != null)
+                    {
+                        <span style="margin-left:0.5rem;color:rgba(255,255,255,0.8);font-weight:700;">
+                            @(isFinished ? s.DealerTotal.ToString() : s.DealerCards.Where(c => c != "?").Any()
+                                ? CardRank(s.DealerCards[0]) == "A" || CardRank(s.DealerCards[0]) == "10" ||
+                                  CardRank(s.DealerCards[0]) == "J" || CardRank(s.DealerCards[0]) == "Q" ||
+                                  CardRank(s.DealerCards[0]) == "K" ? s.DealerTotal.ToString() : s.DealerTotal.ToString()
+                                : "")
+                        </span>
+                    }
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.6rem;min-height:90px;">
+                    @if (s != null)
+                    {
+                        @foreach (var card in s.DealerCards)
+                        {
+                            if (card == "?")
+                            {
+                                <div class="bj-card bj-card--hidden">
+                                    <span style="font-size:2rem;">🂠</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="bj-card @SuitColor(card)">
+                                    <span class="bj-rank-top">@CardRank(card)</span>
+                                    <span class="bj-suit">@SuitSymbol(card)</span>
+                                    <span class="bj-rank-bot">@CardRank(card)</span>
+                                </div>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <div style="color:rgba(255,255,255,0.2);font-size:0.875rem;align-self:center;">
+                            Pornește un joc nou
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Mesaj central -->
+            @if (s != null)
+            {
+                <div style="text-align:center;margin:0.75rem 0;min-height:2.5rem;">
+                    @if (s.Status == "Blackjack")
+                    {
+                        <div style="font-size:1.6rem;font-weight:900;color:var(--gold);text-shadow:0 0 20px rgba(245,158,11,0.8);">
+                            🃏 BLACKJACK! +@s.Payout.ToString("F2") RON
+                        </div>
+                    }
+                    else if (s.Status == "PlayerWin" || s.Status == "DealerBust")
+                    {
+                        <div style="font-size:1.4rem;font-weight:900;color:#34D399;">
+                            🏆 CÂȘTIG! +@s.Payout.ToString("F2") RON
+                        </div>
+                    }
+                    else if (s.Status == "Push")
+                    {
+                        <div style="font-size:1.2rem;font-weight:700;color:var(--text-muted);">
+                            ↔ EGALITATE — miza returnată
+                        </div>
+                    }
+                    else if (s.Status == "PlayerBust")
+                    {
+                        <div style="font-size:1.2rem;font-weight:700;color:var(--text-dim);">
+                            Depășit! @if (isNearMiss) { <span style="color:var(--gold);">Aproape ai reușit!</span> }
+                        </div>
+                    }
+                    else if (s.Status == "DealerWin")
+                    {
+                        <div style="font-size:1.2rem;font-weight:700;color:var(--text-dim);">
+                            Dealer câștigă. @if (isNearMiss) { <span style="color:var(--gold);">⚡ Atât de aproape!</span> }
+                        </div>
+                    }
+                    else if (s.Status == "Active")
+                    {
+                        <div style="font-size:0.9rem;color:rgba(255,255,255,0.5);">
+                            @if (s.PlayerTotal >= 18)
+                            { <span style="color:#34D399;font-weight:700;">Mână bună! Stai sau mai tragi?</span> }
+                            else if (s.PlayerTotal <= 11)
+                            { <span>Mai trage — nu poți da bust!</span> }
+                            else
+                            { <span>Decizia îți aparține...</span> }
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Cărțile jucătorului -->
+            <div>
+                <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;
+                             letter-spacing:0.1em;margin-bottom:0.6rem;">
+                    Tu
+                    @if (s != null)
+                    {
+                        <span style="margin-left:0.5rem;color:rgba(255,255,255,0.8);font-weight:700;">
+                            @s.PlayerTotal
+                            @if (s.PlayerTotal > 21) { <span style="color:#EF4444;"> BUST!</span> }
+                            else if (s.PlayerTotal == 21) { <span style="color:var(--gold);"> 🎯</span> }
+                        </span>
+                    }
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.6rem;min-height:90px;">
+                    @if (s != null)
+                    {
+                        @foreach (var card in s.PlayerCards)
+                        {
+                            <div class="bj-card @SuitColor(card)">
+                                <span class="bj-rank-top">@CardRank(card)</span>
+                                <span class="bj-suit">@SuitSymbol(card)</span>
+                                <span class="bj-rank-bot">@CardRank(card)</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controale -->
+    @if (isActive && s != null)
+    {
+        <div class="dark-panel mb-4">
+            <div class="dark-panel-body" style="display:flex;gap:0.75rem;justify-content:center;">
+                <form asp-controller="Blackjack" asp-action="Hit" method="post" style="flex:1;max-width:180px;">
+                    <input type="hidden" name="sessionId" value="@s.SessionId" />
+                    <button type="submit" class="btn-dark-primary w-100 pulse"
+                            style="font-size:1rem;padding:0.85rem;background:#1d4ed8;border-color:#1d4ed8;">
+                        🃏 MAI TRAGE
+                    </button>
+                </form>
+                <form asp-controller="Blackjack" asp-action="Stand" method="post" style="flex:1;max-width:180px;">
+                    <input type="hidden" name="sessionId" value="@s.SessionId" />
+                    <button type="submit" class="btn-dark-primary w-100"
+                            style="font-size:1rem;padding:0.85rem;background:#374151;border-color:#374151;">
+                        ✋ STAI
+                    </button>
+                </form>
+            </div>
+            @if (s.PlayerTotal <= 16)
+            {
+                <div style="text-align:center;padding:0.5rem 1rem 0.75rem;
+                             font-size:0.8rem;color:var(--gold);font-weight:600;">
+                    💡 Cu @s.PlayerTotal puncte, statisticile arată că ar trebui să mai tragi!
+                </div>
+            }
+        </div>
+    }
+
+    @if (!isActive)
+    {
+        <!-- Formular joc nou -->
+        <div class="dark-panel">
+            <div class="dark-panel-header dark-panel-header--red">
+                🃏 Joc nou
+                @if (isWin) { <span class="hot-badge ms-2">CONTINUĂ!</span> }
+            </div>
+            <div class="dark-panel-body">
+                @if (isWin)
+                {
+                    <div style="text-align:center;margin-bottom:1rem;
+                                 background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);
+                                 border-radius:var(--radius);padding:0.75rem;">
+                        <span style="color:var(--gold);font-weight:700;">🔥 Ești pe val! Continuă să câștigI!</span>
+                    </div>
+                }
+                else if (isFinished && !isWin && !isPush)
+                {
+                    <div style="text-align:center;margin-bottom:1rem;
+                                 background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);
+                                 border-radius:var(--radius);padding:0.75rem;">
+                        <span style="color:var(--text-muted);font-size:0.875rem;">
+                            Mâna următoare poate fi câștigătoare — statisticile sunt de partea ta!
+                        </span>
+                    </div>
+                }
+                <form asp-controller="Blackjack" asp-action="Start" method="post">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-5">
+                            <label class="form-label-dark">Miză (RON)</label>
+                            <input type="number" name="stake" min="1" max="500" step="0.50"
+                                   value="@(s?.Stake > 0 ? s.Stake.ToString("F2") : "50")"
+                                   class="form-control-dark" required />
+                        </div>
+                        <div class="col-sm-4">
+                            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                                @foreach (var q in new[]{10,25,50,100})
+                                {
+                                    <button type="button" class="dark-chip dark-chip-gray"
+                                            style="cursor:pointer;font-size:0.72rem;"
+                                            onclick="document.querySelector('[name=stake]').value='@q'">
+                                        @q
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <button type="submit" class="btn-dark-primary w-100 pulse"
+                                    style="font-size:1rem;padding:0.85rem;">
+                                🃏 JOACĂ
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+<style>
+.bj-card {
+    width: 62px;
+    height: 92px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 3px 4px 10px rgba(0,0,0,0.5);
+    position: relative;
+    animation: card-deal 0.25s ease-out;
+    flex-shrink: 0;
+}
+.bj-card--red   { color: #DC2626; }
+.bj-card--black { color: #111; }
+.bj-card--hidden { background: #1e3a8a; border-color: #1e3a8a; }
+.bj-rank-top {
+    position: absolute; top: 4px; left: 5px;
+    font-size: 0.75rem; font-weight: 900; line-height: 1;
+}
+.bj-suit {
+    font-size: 1.4rem; line-height: 1;
+}
+.bj-rank-bot {
+    position: absolute; bottom: 4px; right: 5px;
+    font-size: 0.75rem; font-weight: 900; line-height: 1;
+    transform: rotate(180deg);
+}
+@@keyframes card-deal {
+    from { transform: translateY(-24px) scale(0.85); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+</style>
+<script>
+(function(){
+    var base = @(new Random().Next(60,140));
+    setInterval(function(){
+        base += Math.floor(Math.random()*5) - 2;
+        if(base<30) base=30; if(base>200) base=200;
+        var el = document.getElementById('bj-live');
+        if(el) el.textContent = base;
+    }, 3500);
+})();
+</script>
+}

@@ -1,0 +1,109 @@
+@model BetLab.DarkWeb.Models.AdminAddEventViewModel
+@{
+    ViewData["Title"] = "Admin — Eveniment nou";
+}
+
+<div class="mb-4 d-flex align-items-center gap-2">
+    <a asp-action="Events" class="btn btn-sm btn-outline-secondary">← Înapoi</a>
+    <h1 class="h4 fw-bold mb-0 ms-2" style="color:#fff;">+ Eveniment nou</h1>
+</div>
+
+<div class="card" style="background:#1e293b;border:1px solid #334155;max-width:640px;">
+    <div class="card-body">
+        <form asp-action="AddEvent" method="post">
+            <div class="row g-3">
+                <!-- Sport -->
+                <div class="col-md-6">
+                    <label class="form-label" style="color:#94a3b8;font-size:0.82rem;">Sport</label>
+                    <select name="sportId" class="form-select" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var s in Model.Sports)
+                        { <option value="@s.Id">@s.Name</option> }
+                    </select>
+                </div>
+
+                <!-- Competiție -->
+                <div class="col-md-6">
+                    <label class="form-label" style="color:#94a3b8;font-size:0.82rem;">Competiție</label>
+                    <select name="competitionId" class="form-select" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var c in Model.Competitions)
+                        { <option value="@c.Id">@c.Name</option> }
+                    </select>
+                </div>
+
+                <!-- Echipa gazdă -->
+                <div class="col-md-6">
+                    <label class="form-label" style="color:#94a3b8;font-size:0.82rem;">Echipa gazdă</label>
+                    <select name="homeTeamId" id="homeTeamId" class="form-select" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var t in Model.Teams)
+                        { <option value="@t.Id" data-name="@t.Name">@t.Name</option> }
+                    </select>
+                </div>
+
+                <!-- Echipa oaspete -->
+                <div class="col-md-6">
+                    <label class="form-label" style="color:#94a3b8;font-size:0.82rem;">Echipa oaspete</label>
+                    <select name="awayTeamId" id="awayTeamId" class="form-select" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required>
+                        <option value="">-- Selectează --</option>
+                        @foreach (var t in Model.Teams)
+                        { <option value="@t.Id" data-name="@t.Name">@t.Name</option> }
+                    </select>
+                </div>
+
+                <!-- Hidden: team names pentru a fi trimise la server -->
+                <input type="hidden" name="homeTeamName" id="homeTeamName" />
+                <input type="hidden" name="awayTeamName" id="awayTeamName" />
+
+                <!-- Data/ora -->
+                <div class="col-md-6">
+                    <label class="form-label" style="color:#94a3b8;font-size:0.82rem;">Data și ora (ora locală)</label>
+                    <input type="datetime-local" name="startTimeUtc"
+                           class="form-control" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required />
+                </div>
+
+                <!-- Cote 1X2 -->
+                <div class="col-12">
+                    <hr style="border-color:#334155;" />
+                    <p class="text-muted mb-2" style="font-size:0.82rem;">Piața 1X2 — cotele vor fi create automat</p>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <label class="form-label" style="color:#94a3b8;font-size:0.8rem;">Cotă 1 (gazdă)</label>
+                            <input type="number" name="oddsHome" step="0.01" min="1.01" value="2.00"
+                                   class="form-control" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label" style="color:#94a3b8;font-size:0.8rem;">Cotă X (egal)</label>
+                            <input type="number" name="oddsDraw" step="0.01" min="1.01" value="3.20"
+                                   class="form-control" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label" style="color:#94a3b8;font-size:0.8rem;">Cotă 2 (oaspete)</label>
+                            <input type="number" name="oddsAway" step="0.01" min="1.01" value="3.50"
+                                   class="form-control" style="background:#0f172a;border-color:#334155;color:#f1f5f9;" required />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary w-100">Creează eveniment</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// Populăm câmpurile hidden cu numele echipelor selectate
+document.getElementById('homeTeamId').addEventListener('change', function() {
+    var sel = this.options[this.selectedIndex];
+    document.getElementById('homeTeamName').value = sel.getAttribute('data-name') || '';
+});
+document.getElementById('awayTeamId').addEventListener('change', function() {
+    var sel = this.options[this.selectedIndex];
+    document.getElementById('awayTeamName').value = sel.getAttribute('data-name') || '';
+});
+</script>
+}

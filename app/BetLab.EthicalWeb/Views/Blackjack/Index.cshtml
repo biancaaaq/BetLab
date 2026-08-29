@@ -1,0 +1,288 @@
+@model BetLab.EthicalWeb.Models.BlackjackPageViewModel
+@{
+    ViewData["Title"] = "Blackjack";
+    var s = Model.State;
+
+    string SuitColor(string card) =>
+        card.Contains('♥') || card.Contains('♦') ? "bj-card--red" : "bj-card--black";
+
+    string SuitSymbol(string card)
+    {
+        if (card.Contains('♠')) return "♠";
+        if (card.Contains('♥')) return "♥";
+        if (card.Contains('♦')) return "♦";
+        if (card.Contains('♣')) return "♣";
+        return "";
+    }
+
+    string CardRank(string card) => card == "?" ? "?" :
+        card.Replace("♠","").Replace("♥","").Replace("♦","").Replace("♣","");
+
+    var isActive   = s != null && !s.IsFinished;
+    var isFinished = s != null && s.IsFinished;
+    var isWin      = isFinished && (s!.Status is "PlayerWin" or "DealerBust" or "Blackjack");
+    var isPush     = isFinished && s!.Status == "Push";
+    var isLoss     = isFinished && !isWin && !isPush;
+}
+
+<div class="container py-4" style="max-width:700px;">
+
+    <div class="mb-4">
+        <h1 class="h3 fw-bold mb-1">🃏 Blackjack</h1>
+        <p class="text-muted mb-0">Încearcă să ajungi la 21 fără să depășești. Dealerul trage până la 17.</p>
+    </div>
+
+    <!-- Banner joc responsabil -->
+    <div class="alert alert-info d-flex align-items-start gap-2 mb-4" style="font-size:0.875rem;">
+        <span style="font-size:1.1rem;">ℹ️</span>
+        <div>
+            <strong>Joacă responsabil.</strong>
+            Blackjack este un joc de noroc. Stabilește o limită înainte de a începe și respectă-o.
+            <a href="#" class="alert-link ms-1">Setează limite →</a>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger mb-3">@TempData["Error"]</div>
+    }
+
+    <!-- Masa de joc -->
+    <div class="card mb-4" style="background:#1a472a;border:1px solid #2d6a3f;border-radius:12px;">
+        <div class="card-body p-4">
+
+            <!-- Dealer -->
+            <div class="mb-4">
+                <div class="text-white-50 mb-2" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;">
+                    Dealer
+                    @if (s != null)
+                    {
+                        <span class="text-white fw-bold ms-2">@(isFinished ? s.DealerTotal.ToString() : s.DealerTotal.ToString())</span>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2" style="min-height:90px;">
+                    @if (s != null)
+                    {
+                        @foreach (var card in s.DealerCards)
+                        {
+                            if (card == "?")
+                            {
+                                <div class="bj-card bj-card--hidden">
+                                    <span style="font-size:2rem;">🂠</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="bj-card @SuitColor(card)">
+                                    <span class="bj-rank-top">@CardRank(card)</span>
+                                    <span class="bj-suit">@SuitSymbol(card)</span>
+                                    <span class="bj-rank-bot">@CardRank(card)</span>
+                                </div>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-white-50 align-self-center" style="font-size:0.875rem;">
+                            Pornește un joc nou pentru a vedea cărțile
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Rezultat -->
+            @if (s != null && isFinished)
+            {
+                <div class="text-center py-2 mb-3">
+                    @if (s.Status == "Blackjack")
+                    {
+                        <div class="fw-bold text-warning" style="font-size:1.4rem;">🃏 Blackjack! Câștig: +@s.Payout.ToString("F2") RON</div>
+                    }
+                    else if (isWin)
+                    {
+                        <div class="fw-bold text-success" style="font-size:1.3rem;">✅ Câștig! +@s.Payout.ToString("F2") RON</div>
+                    }
+                    else if (isPush)
+                    {
+                        <div class="fw-bold text-secondary" style="font-size:1.2rem;">↔ Egalitate — miza de @s.Stake.ToString("F2") RON returnată</div>
+                    }
+                    else if (s.Status == "PlayerBust")
+                    {
+                        <div class="fw-bold text-danger" style="font-size:1.2rem;">Depășit (@s.PlayerTotal). Pierdere: @s.Stake.ToString("F2") RON</div>
+                    }
+                    else
+                    {
+                        <div class="fw-bold text-danger" style="font-size:1.2rem;">Dealer câștigă (@s.DealerTotal vs @s.PlayerTotal). Pierdere: @s.Stake.ToString("F2") RON</div>
+                    }
+                </div>
+            }
+            else if (s != null && isActive)
+            {
+                <div class="text-center py-2 mb-3 text-white-50" style="font-size:0.875rem;">
+                    @if (s.PlayerTotal >= 21)
+                    { <span class="text-warning fw-bold">Ai @s.PlayerTotal puncte!</span> }
+                    else if (s.PlayerTotal <= 11)
+                    { <span>Cu @s.PlayerTotal puncte poți trage fără risc de bust.</span> }
+                    else
+                    { <span>Ai @s.PlayerTotal puncte. Probabilitate bust la următoarea carte: ~@(s.PlayerTotal >= 17 ? "mare" : "moderată").</span> }
+                </div>
+            }
+
+            <!-- Jucător -->
+            <div>
+                <div class="text-white-50 mb-2" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;">
+                    Tu
+                    @if (s != null)
+                    {
+                        <span class="text-white fw-bold ms-2">
+                            @s.PlayerTotal
+                            @if (s.PlayerTotal > 21) { <span class="text-danger"> BUST</span> }
+                            else if (s.PlayerTotal == 21) { <span class="text-warning"> 🎯</span> }
+                        </span>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2" style="min-height:90px;">
+                    @if (s != null)
+                    {
+                        @foreach (var card in s.PlayerCards)
+                        {
+                            <div class="bj-card @SuitColor(card)">
+                                <span class="bj-rank-top">@CardRank(card)</span>
+                                <span class="bj-suit">@SuitSymbol(card)</span>
+                                <span class="bj-rank-bot">@CardRank(card)</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Butoane acțiuni (joc activ) -->
+    @if (isActive && s != null)
+    {
+        <div class="card mb-4">
+            <div class="card-body d-flex gap-3 justify-content-center">
+                <form asp-controller="Blackjack" asp-action="Hit" method="post">
+                    <input type="hidden" name="sessionId" value="@s.SessionId" />
+                    <button type="submit" class="btn btn-primary px-4 py-2" style="font-size:1rem;">
+                        🃏 Mai trage
+                    </button>
+                </form>
+                <form asp-controller="Blackjack" asp-action="Stand" method="post">
+                    <input type="hidden" name="sessionId" value="@s.SessionId" />
+                    <button type="submit" class="btn btn-outline-secondary px-4 py-2" style="font-size:1rem;">
+                        ✋ Stai
+                    </button>
+                </form>
+            </div>
+            <!-- Informație probabilitate bust -->
+            @{
+                var bustChance = s.PlayerTotal switch {
+                    >= 21 => 100,
+                    20    => 92,
+                    19    => 85,
+                    18    => 77,
+                    17    => 69,
+                    16    => 62,
+                    15    => 54,
+                    14    => 46,
+                    _     => 0
+                };
+            }
+            @if (bustChance > 0)
+            {
+                <div class="text-center pb-3 text-muted" style="font-size:0.8rem;">
+                    Probabilitate de bust la următoarea carte: <strong>~@bustChance%</strong>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Formular joc nou -->
+    @if (!isActive)
+    {
+        <div class="card">
+            <div class="card-header fw-semibold">🃏 Joc nou</div>
+            <div class="card-body">
+                @if (isLoss)
+                {
+                    <div class="alert alert-warning d-flex gap-2 align-items-start mb-3" style="font-size:0.82rem;">
+                        <span>⚠️</span>
+                        <span>Ai pierdut această mână. Înainte de a continua, ia o scurtă pauză dacă simți că trebuie.</span>
+                    </div>
+                }
+                <form asp-controller="Blackjack" asp-action="Start" method="post">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-5">
+                            <label class="form-label fw-semibold">Miză (RON)</label>
+                            <input type="number" name="stake" min="1" max="500" step="0.50"
+                                   value="@(s?.Stake > 0 ? s.Stake.ToString("F2") : "10")"
+                                   class="form-control" required />
+                            <div class="form-text">Minim 1 RON · Maxim 500 RON</div>
+                        </div>
+                        @* <div class="col-sm-4">
+                            <div class="d-flex gap-2 flex-wrap">
+                                @foreach (var q in new[]{5,10,25,50})
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            onclick="document.querySelector('[name=stake]').value='@q'">
+                                        @q
+                                    </button>
+                                }
+                            </div>
+                        </div> *@
+                        <div class="col-sm-3">
+                            <button type="submit" class="btn btn-primary w-100">Joacă</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Reguli rapide -->
+        <div class="mt-4 p-3 rounded" style="background:#f8f9fa;font-size:0.8rem;color:#555;">
+            <strong>Reguli:</strong> Încearcă să ajungi cât mai aproape de 21 fără să depășești.
+            Dealerul trage până la minim 17. Blackjack (As + carte de 10) plătește 2.5×.
+            Câștig normal: 2×. Egalitate: miza returnată.
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+<style>
+.bj-card {
+    width: 62px;
+    height: 92px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.2);
+    position: relative;
+    animation: card-deal 0.25s ease-out;
+    flex-shrink: 0;
+}
+.bj-card--red   { color: #DC2626; }
+.bj-card--black { color: #111; }
+.bj-card--hidden { background: #1e3a8a; border-color: #1e3a8a; }
+.bj-rank-top {
+    position: absolute; top: 4px; left: 5px;
+    font-size: 0.75rem; font-weight: 900; line-height: 1;
+}
+.bj-suit { font-size: 1.4rem; line-height: 1; }
+.bj-rank-bot {
+    position: absolute; bottom: 4px; right: 5px;
+    font-size: 0.75rem; font-weight: 900; line-height: 1;
+    transform: rotate(180deg);
+}
+@@keyframes card-deal {
+    from { transform: translateY(-20px) scale(0.85); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+</style>
+}

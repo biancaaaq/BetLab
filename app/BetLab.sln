@@ -1,0 +1,61 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36705.20
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.Domain", "BetLab.Domain\BetLab.Domain.csproj", "{C144C805-EDD1-4434-8FAF-0B3457CB89F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.Application", "BetLab.Application\BetLab.Application.csproj", "{4ADD78B3-4FCD-4647-B626-66EEA445F7C9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.Infrastructure", "BetLab.Infrastructure\BetLab.Infrastructure.csproj", "{ED05734F-568A-4663-BF99-A2C03B9AC52D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.Api", "BetLab.Api\BetLab.Api.csproj", "{D952E788-369B-4A8F-8944-1B1BEC7D3E39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.EthicalWeb", "BetLab.EthicalWeb\BetLab.EthicalWeb.csproj", "{1267F119-4299-4F05-B2F1-8D1648AAC6C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.DarkWeb", "BetLab.DarkWeb\BetLab.DarkWeb.csproj", "{379569C8-5710-41D8-B8D2-E7E8AE8CAA8D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetLab.Tests", "BetLab.Tests\BetLab.Tests.csproj", "{AE512047-D211-4A36-BD9D-66C6E8F6052A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C144C805-EDD1-4434-8FAF-0B3457CB89F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C144C805-EDD1-4434-8FAF-0B3457CB89F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C144C805-EDD1-4434-8FAF-0B3457CB89F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C144C805-EDD1-4434-8FAF-0B3457CB89F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4ADD78B3-4FCD-4647-B626-66EEA445F7C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4ADD78B3-4FCD-4647-B626-66EEA445F7C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4ADD78B3-4FCD-4647-B626-66EEA445F7C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4ADD78B3-4FCD-4647-B626-66EEA445F7C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED05734F-568A-4663-BF99-A2C03B9AC52D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED05734F-568A-4663-BF99-A2C03B9AC52D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED05734F-568A-4663-BF99-A2C03B9AC52D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED05734F-568A-4663-BF99-A2C03B9AC52D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D952E788-369B-4A8F-8944-1B1BEC7D3E39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D952E788-369B-4A8F-8944-1B1BEC7D3E39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D952E788-369B-4A8F-8944-1B1BEC7D3E39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D952E788-369B-4A8F-8944-1B1BEC7D3E39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1267F119-4299-4F05-B2F1-8D1648AAC6C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1267F119-4299-4F05-B2F1-8D1648AAC6C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1267F119-4299-4F05-B2F1-8D1648AAC6C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1267F119-4299-4F05-B2F1-8D1648AAC6C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{379569C8-5710-41D8-B8D2-E7E8AE8CAA8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{379569C8-5710-41D8-B8D2-E7E8AE8CAA8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{379569C8-5710-41D8-B8D2-E7E8AE8CAA8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{379569C8-5710-41D8-B8D2-E7E8AE8CAA8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE512047-D211-4A36-BD9D-66C6E8F6052A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE512047-D211-4A36-BD9D-66C6E8F6052A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE512047-D211-4A36-BD9D-66C6E8F6052A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE512047-D211-4A36-BD9D-66C6E8F6052A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9562F90C-970E-4FA4-A331-C02871E197AB}
+	EndGlobalSection
+EndGlobal

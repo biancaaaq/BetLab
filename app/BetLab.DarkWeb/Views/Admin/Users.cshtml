@@ -1,0 +1,107 @@
+﻿@model List<BetLab.DarkWeb.Models.AdminUserViewModel>
+@{
+    ViewData["Title"] = "Admin — Utilizatori";
+}
+
+<div class="mb-4 d-flex align-items-center gap-2 flex-wrap">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+    <h1 class="h4 fw-bold mb-0 ms-2" style="color:#fff;">👥 Gestionare utilizatori</h1>
+    <span class="ms-auto text-muted" style="font-size:0.82rem;">@Model.Count utilizatori total</span>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+@if (TempData["AdminError"] != null)
+{ <div class="alert alert-danger mb-3">⚠️ @TempData["AdminError"]</div> }
+
+<div class="card" style="background:#1e293b;border:1px solid #334155;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0" style="--bs-table-bg:#1e293b;--bs-table-hover-bg:#0f172a;">
+                <thead>
+                    <tr style="border-bottom:1px solid #334155;font-size:0.75rem;text-transform:uppercase;color:#94a3b8;letter-spacing:.05em;">
+                        <th class="px-4 py-3">Utilizator</th>
+                        <th class="px-3 py-3">Sold</th>
+                        <th class="px-3 py-3">Status</th>
+                        <th class="px-3 py-3">Înregistrat</th>
+                        <th class="px-3 py-3 text-end">Acțiuni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        var isAdmin = u.Roles.Contains("Admin");
+                        <tr style="border-bottom:1px solid #1e293b;">
+                            <td class="px-4 py-3">
+                                <div style="color:#f1f5f9;font-weight:600;">@u.UserName</div>
+                                <div style="color:#94a3b8;font-size:0.78rem;">@u.Email</div>
+                                @if (isAdmin)
+                                { <span class="badge bg-warning text-dark mt-1" style="font-size:0.7rem;">ADMIN</span> }
+                            </td>
+                            <td class="px-3 py-3">
+                                <span style="color:#f1f5f9;font-weight:700;">@u.Balance.ToString("F2")</span>
+                                <span style="color:#94a3b8;font-size:0.8rem;"> @u.Currency</span>
+                            </td>
+                            <td class="px-3 py-3">
+                                @if (u.IsExcluded)
+                                {
+                                    <span class="badge" style="background:#7c3aed;">🔒 Exclus</span>
+                                }
+                                else if (!u.IsActive)
+                                {
+                                    <span class="badge bg-danger">Blocat</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Activ</span>
+                                }
+                            </td>
+                            <td class="px-3 py-3" style="color:#94a3b8;font-size:0.8rem;">
+                                @u.CreatedAt.ToRomanianTime().ToString("dd MMM yyyy")
+                            </td>
+                            <td class="px-3 py-3">
+                                <div class="d-flex gap-1 justify-content-end flex-wrap">
+                                    @if (!isAdmin)
+                                    {
+                                        <!-- Reset balance -->
+                                        <form asp-action="ResetBalance" method="post" class="d-inline"
+                                              onsubmit="return confirm('Resetezi soldul la 100 RON?')">
+                                            <input type="hidden" name="userId" value="@u.UserId" />
+                                            <button class="btn btn-xs btn-outline-info" style="font-size:0.72rem;padding:2px 8px;">
+                                                🔄 Reset sold
+                                            </button>
+                                        </form>
+
+                                        @if (u.IsActive)
+                                        {
+                                            <form asp-action="BlockUser" method="post" class="d-inline"
+                                                  onsubmit="return confirm('Blochezi utilizatorul @u.UserName?')">
+                                                <input type="hidden" name="userId" value="@u.UserId" />
+                                                <button class="btn btn-xs btn-outline-danger" style="font-size:0.72rem;padding:2px 8px;">
+                                                    🚫 Blochează
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="UnblockUser" method="post" class="d-inline">
+                                                <input type="hidden" name="userId" value="@u.UserId" />
+                                                <button class="btn btn-xs btn-outline-success" style="font-size:0.72rem;padding:2px 8px;">
+                                                    ✅ Deblochează
+                                                </button>
+                                            </form>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted" style="font-size:0.75rem;">—</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

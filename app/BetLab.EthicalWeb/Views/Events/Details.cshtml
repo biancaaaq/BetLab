@@ -1,0 +1,706 @@
+@model BetLab.EthicalWeb.Models.EventDetailsPageViewModel
+@using BetLab.EthicalWeb.Services
+
+@{
+    var ev = Model.Event;
+    var analytics = Model.Analytics;
+    ViewData["Title"] = $"{ev.HomeTeam} vs {ev.AwayTeam}";
+    var roCulture = new System.Globalization.CultureInfo("ro-RO");
+
+    string ImpliedProbability(decimal odds)
+    {
+        if (odds <= 1m) return "—";
+        var prob = Math.Round(1m / odds * 100m, 1);
+        return $"{prob.ToString("0.#", roCulture)}%";
+    }
+
+    // Coș curent (pentru indicator "deja în bilet")
+    var slipItems = Context.Session.GetObject<List<BetLab.EthicalWeb.Models.BetSlipItemViewModel>>("Ethical_BetSlip")
+                    ?? new();
+    decimal totalOdds = slipItems.Any()
+        ? decimal.Round(slipItems.Select(x => x.Odds).Aggregate(1m, (a, b) => a * b), 2, MidpointRounding.AwayFromZero)
+        : 0m;
+
+    // Grupăm piețele pentru afișare ordonată
+    int OrderForMarket(string type)
+    {
+        if (type == "1X2")             return 1;
+        if (type == "DoubleChance")    return 2;
+        if (type == "DrawNoBet")       return 3;
+        if (type == "BTTS")            return 4;
+        if (type == "ResultBtts")      return 5;
+        if (type.StartsWith("OU_"))    return 6;
+        if (type == "GoalsOddEven")    return 7;
+        if (type.StartsWith("HOME_GOALS_")) return 8;
+        if (type.StartsWith("AWAY_GOALS_")) return 9;
+        if (type == "HomeBothHalves")  return 10;
+        if (type.StartsWith("CORNERS_")) return 11;
+        if (type == "CorrectScore")    return 12;
+        if (type == "HtFt")            return 13;
+        if (type == "WinSecondHalf")   return 14;
+        return 99;
+    }
+    var orderedMarkets = ev.Markets.OrderBy(m => OrderForMarket(m.MarketType)).ToList();
+
+    // Helper pentru explicarea fiecărui market
+    string MarketExplainer(string type)
+    {
+        return type switch
+        {
+            "1X2"            => "Rezultat final 90 min. 1 = gazda câștigă, X = egal, 2 = oaspetele câștigă.",
+            "DoubleChance"   => "Acoperi 2 din cele 3 rezultate posibile. Cote mai mici, șansă mai mare.",
+            "DrawNoBet"      => "Pariu fără egal: dacă meciul se termină egal, primești miza înapoi.",
+            "BTTS"           => "Both Teams To Score. Da = ambele echipe marchează cel puțin 1 gol.",
+            "ResultBtts"     => "Combinație rezultat + ambele marchează. Ex: «1 & GG» = gazda câștigă ȘI ambele marchează.",
+            "OU_0_5"         => "Total goluri în meci. Peste 0.5 = cel puțin 1 gol marcat.",
+            "OU_1_5"         => "Total goluri în meci. Peste 1.5 = 2+ goluri.",
+            "OU_2_5"         => "Total goluri în meci. Peste 2.5 = 3+ goluri.",
+            "OU_3_5"         => "Total goluri în meci. Peste 3.5 = 4+ goluri.",
+            "GoalsOddEven"   => "Numărul total de goluri va fi impar sau par? Egalul = par.",
+            "HomeBothHalves" => "Gazda marcăm cel puțin un gol în AMBELE reprize?",
+            "CorrectScore"   => "Scorul exact al meciului. Cele mai mari cote — și cele mai dificile.",
+            "HtFt"           => "Rezultatul la pauză / la final. Ex: «1 / X» = gazda conduce la pauză, egal final.",
+            "WinSecondHalf"  => "Cine câștigă DOAR repriza 2 (golurile din prima jumătate nu contează).",
+            _ when type.StartsWith("HOME_GOALS_") => $"Câte goluri marcăm gazda? Pragul: {type.Replace("HOME_GOALS_", "").Replace("_", ".")}.",
+            _ when type.StartsWith("AWAY_GOALS_") => $"Câte goluri marcăm oaspetele? Pragul: {type.Replace("AWAY_GOALS_", "").Replace("_", ".")}.",
+            _ when type.StartsWith("CORNERS_")    => $"Numărul total de cornere în meci. Pragul: {type.Replace("CORNERS_", "").Replace("_", ".")}.",
+            _                => ""
+        };
+    }
+
+    // Helper forme W/D/L
+    string FormColor(string r) => r switch
+    {
+        "W" => "#16A34A",
+        "D" => "#9CA3AF",
+        "L" => "#DC2626",
+        _   => "#9CA3AF"
+    };
+    string FormLabel(string r) => r switch
+    {
+        "W" => "V",
+        "D" => "E",
+        "L" => "Î",
+        _   => "?"
+    };
+}
+
+<a asp-controller="Events" asp-action="Index" class="btn btn-ghost btn-sm mb-3">
+    <i data-lucide="arrow-left"></i>
+    <span>Înapoi la meciuri</span>
+</a>
+
+@if (TempData["AuthInfo"] != null)
+{
+    <div class="alert alert-info mb-3" style="align-items:flex-start;">
+        <i data-lucide="info"></i>
+        <div style="flex:1;">
+            <strong style="display:block;margin-bottom:0.35rem;">Ai nevoie de un cont pentru a paria</strong>
+            <div style="font-size:0.88rem;line-height:1.5;margin-bottom:0.6rem;">@TempData["AuthInfo"]</div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-sm">
+                    <i data-lucide="log-in"></i><span>Autentificare</span>
+                </a>
+                <a asp-controller="Account" asp-action="Register" class="btn btn-outline-primary btn-sm">
+                    <i data-lucide="user-plus"></i><span>Creează cont</span>
+                </a>
+            </div>
+        </div>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger mb-3">
+        <i data-lucide="alert-circle"></i>
+        <div>@TempData["Error"]</div>
+    </div>
+}
+
+<!-- HERO meci — peste tot lățimea -->
+<div class="ethical-hero" style="padding:1.5rem 2rem;margin-bottom:1rem;">
+    <div class="match-meta mb-2">
+        <span class="match-meta-chip"><i data-lucide="trophy"></i><span>@ev.CompetitionName</span></span>
+        <span class="match-meta-chip"><i data-lucide="circle-dot"></i><span>@ev.SportName</span></span>
+        <span class="match-meta-chip"><i data-lucide="clock"></i>
+            <span>@ev.StartTimeUtc.ToRomanianTime().ToString("dd MMMM yyyy, HH:mm", roCulture)</span>
+        </span>
+        @if (ev.IsLive)
+        {
+            <span class="match-meta-chip" style="background:var(--danger-soft);color:#991B1B;">
+                <i data-lucide="radio"></i><span>Live</span>
+            </span>
+        }
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1rem;">
+        <div style="text-align:right;font-size:1.6rem;font-weight:800;">@ev.HomeTeam</div>
+        @if ((ev.IsLive || ev.Status == "Finished") && (ev.HomeScore.HasValue || ev.AwayScore.HasValue))
+        {
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;">
+                <div style="font-size:2rem;font-weight:900;padding:0.4rem 1rem;border-radius:10px;
+                            background:@(ev.IsLive ? "#FEE2E2" : "#E5E7EB");color:@(ev.IsLive ? "#991B1B" : "#374151");
+                            min-width:110px;text-align:center;">
+                    @(ev.HomeScore ?? 0) – @(ev.AwayScore ?? 0)
+                </div>
+                @if (ev.IsLive)
+                {
+                    <div class="eth-live-minute" data-start="@ev.StartTimeUtc.ToString("o")">
+                        <span class="eth-live-dot"></span>
+                        <span class="eth-live-minute__txt">--'</span>
+                    </div>
+                }
+                else if (ev.Status == "Finished")
+                {
+                    <span class="ethical-muted" style="font-size:0.8rem;font-weight:600;">FINAL</span>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="ethical-muted" style="font-size:1.2rem;font-weight:600;">vs</div>
+        }
+        <div style="text-align:left;font-size:1.6rem;font-weight:800;">@ev.AwayTeam</div>
+    </div>
+</div>
+
+<!-- Layout grid: stânga conținut + dreapta bilet sticky -->
+<div style="display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start;">
+
+    
+    <div>
+        <!-- Tab buttons -->
+        <div class="eth-tabs">
+            <button class="eth-tab eth-tab--active" data-tab="odds">
+                <i data-lucide="layout-grid"></i><span>Cote (@ev.Markets.Count piețe)</span>
+            </button>
+            <button class="eth-tab" data-tab="stats">
+                <i data-lucide="bar-chart-3"></i><span>Formă recentă</span>
+            </button>
+            <button class="eth-tab" data-tab="h2h">
+                <i data-lucide="swords"></i><span>Întâlniri directe</span>
+            </button>
+            <button class="eth-tab" data-tab="info">
+                <i data-lucide="graduation-cap"></i><span>Cum citești cotele</span>
+            </button>
+        </div>
+
+        
+        <div class="eth-tab-panel eth-tab-panel--active" data-panel="odds">
+            @if (!ev.Markets.Any())
+            {
+                <div class="ethical-panel text-center" style="padding:3rem 1.5rem;">
+                    <i data-lucide="info" style="width:48px;height:48px;color:var(--muted);margin-bottom:1rem;"></i>
+                    <h3>Nu există piețe de pariere</h3>
+                    <p class="ethical-muted mb-0">Cotele pentru acest meci nu sunt disponibile momentan.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var market in orderedMarkets)
+                {
+                    var explainer = MarketExplainer(market.MarketType);
+                    var totalImpliedProb = market.Outcomes.Sum(o => o.Odds > 1m ? 1m / o.Odds : 0m);
+                    var housMargin = totalImpliedProb > 0 ? (totalImpliedProb - 1m) * 100m : 0m;
+
+                    <div class="ethical-panel mb-3">
+                        <div class="ethical-panel-header" style="align-items:flex-start;">
+                            <div class="ethical-panel-title">
+                                <i data-lucide="target"></i>
+                                <span>@market.Name</span>
+                            </div>
+                            @if (housMargin > 0)
+                            {
+                                <span class="rtp-badge" title="Diferența dintre 100% și suma probabilităților implicite — câștigul casei">
+                                    Marjă casă: @housMargin.ToString("0.#", roCulture)%
+                                </span>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(explainer))
+                        {
+                            <div class="ethical-muted" style="font-size:0.82rem;line-height:1.5;margin-bottom:0.75rem;">
+                                <i data-lucide="info" style="width:13px;height:13px;vertical-align:middle;"></i>
+                                @explainer
+                            </div>
+                        }
+
+                        <div style="display:grid;grid-template-columns:repeat(@(Math.Min(market.Outcomes.Count, 4)),1fr);gap:0.5rem;">
+                            @foreach (var outcome in market.Outcomes)
+                            {
+                                var disabled = !string.IsNullOrWhiteSpace(outcome.Status)
+                                    && !outcome.Status.Equals("Open", StringComparison.OrdinalIgnoreCase)
+                                    && !outcome.Status.Equals("Active", StringComparison.OrdinalIgnoreCase);
+                                var inSlip = slipItems.Any(s => s.OutcomeId == outcome.OutcomeId);
+
+                                <div class="eth-outcome @(inSlip ? "eth-outcome--selected" : "") @(disabled ? "eth-outcome--disabled" : "")">
+                                    <div class="eth-outcome__name">@outcome.Name</div>
+                                    <div class="eth-outcome__code">@outcome.Code</div>
+                                    <div class="eth-outcome__odds">@outcome.Odds.ToString("0.00", roCulture)</div>
+                                    <div class="eth-outcome__prob">
+                                        Șansă: <strong>@ImpliedProbability(outcome.Odds)</strong>
+                                    </div>
+                                    <form asp-controller="BetSlip" asp-action="Add" method="post" class="mt-1">
+                                        <input type="hidden" name="outcomeId"   value="@outcome.OutcomeId" />
+                                        <input type="hidden" name="eventId"     value="@ev.EventId" />
+                                        <input type="hidden" name="eventName"   value="@($"{ev.HomeTeam} vs {ev.AwayTeam}")" />
+                                        <input type="hidden" name="marketId"    value="@market.MarketId" />
+                                        <input type="hidden" name="marketName"  value="@market.Name" />
+                                        <input type="hidden" name="outcomeName" value="@outcome.Name" />
+                                        <input type="hidden" name="odds"        value="@outcome.Odds.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" />
+                                        <input type="hidden" name="marketType"  value="@market.MarketType" />
+                                        <input type="hidden" name="outcomeCode" value="@outcome.Code" />
+                                        <input type="hidden" name="ret"         value="Details" />
+                                        <input type="hidden" name="returnId"    value="@ev.EventId" />
+                                        <button type="submit" class="btn btn-outline-primary btn-sm w-100"
+                                                @(disabled ? "disabled" : "")>
+                                            @(inSlip ? "✓ În bilet" : "+ Adaugă")
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+       
+        <div class="eth-tab-panel" data-panel="stats">
+            @if (analytics?.HasRealData == true && (analytics.HomeForm.Any() || analytics.AwayForm.Any()))
+            {
+                <div class="ethical-panel mb-3">
+                    <div class="ethical-panel-title mb-3">
+                        <i data-lucide="bar-chart-3"></i><span>Formă recentă (ultimele 5 meciuri)</span>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- Echipa gazdă -->
+                        <div class="col-md-6">
+                            <h4 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;">@ev.HomeTeam</h4>
+                            @{
+                                var hWins   = analytics.HomeForm.Count(f => f.Result == "W");
+                                var hDraws  = analytics.HomeForm.Count(f => f.Result == "D");
+                                var hLosses = analytics.HomeForm.Count(f => f.Result == "L");
+                                var hGoalsFor     = analytics.HomeForm.Sum(f => f.GoalsFor);
+                                var hGoalsAgainst = analytics.HomeForm.Sum(f => f.GoalsAgainst);
+                            }
+                            <div style="display:flex;gap:0.3rem;margin-bottom:0.6rem;">
+                                @foreach (var f in analytics.HomeForm.OrderByDescending(x => x.DateUtc))
+                                {
+                                    <div title="@f.DateUtc.ToRomanianTime().ToString("dd MMM"): @(f.WasHome ? "Acasă" : "Deplasare") vs @f.Opponent — @f.GoalsFor:@f.GoalsAgainst"
+                                         style="width:32px;height:32px;border-radius:6px;background:@FormColor(f.Result);
+                                                color:white;display:flex;align-items:center;justify-content:center;
+                                                font-weight:800;font-size:0.85rem;">
+                                        @FormLabel(f.Result)
+                                    </div>
+                                }
+                            </div>
+                            <div class="ethical-muted" style="font-size:0.82rem;line-height:1.6;">
+                                <strong>@hWins</strong> victorii ·
+                                <strong>@hDraws</strong> egal ·
+                                <strong>@hLosses</strong> înfrângeri<br/>
+                                Goluri marcate: <strong>@hGoalsFor</strong> ·
+                                primite: <strong>@hGoalsAgainst</strong>
+                            </div>
+                        </div>
+
+                        <!-- Echipa oaspete -->
+                        <div class="col-md-6">
+                            <h4 style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;">@ev.AwayTeam</h4>
+                            @{
+                                var aWins   = analytics.AwayForm.Count(f => f.Result == "W");
+                                var aDraws  = analytics.AwayForm.Count(f => f.Result == "D");
+                                var aLosses = analytics.AwayForm.Count(f => f.Result == "L");
+                                var aGoalsFor     = analytics.AwayForm.Sum(f => f.GoalsFor);
+                                var aGoalsAgainst = analytics.AwayForm.Sum(f => f.GoalsAgainst);
+                            }
+                            <div style="display:flex;gap:0.3rem;margin-bottom:0.6rem;">
+                                @foreach (var f in analytics.AwayForm.OrderByDescending(x => x.DateUtc))
+                                {
+                                    <div title="@f.DateUtc.ToRomanianTime().ToString("dd MMM"): @(f.WasHome ? "Acasă" : "Deplasare") vs @f.Opponent — @f.GoalsFor:@f.GoalsAgainst"
+                                         style="width:32px;height:32px;border-radius:6px;background:@FormColor(f.Result);
+                                                color:white;display:flex;align-items:center;justify-content:center;
+                                                font-weight:800;font-size:0.85rem;">
+                                        @FormLabel(f.Result)
+                                    </div>
+                                }
+                            </div>
+                            <div class="ethical-muted" style="font-size:0.82rem;line-height:1.6;">
+                                <strong>@aWins</strong> victorii ·
+                                <strong>@aDraws</strong> egal ·
+                                <strong>@aLosses</strong> înfrângeri<br/>
+                                Goluri marcate: <strong>@aGoalsFor</strong> ·
+                                primite: <strong>@aGoalsAgainst</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalii pe meci -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="ethical-panel">
+                            <div class="ethical-panel-title mb-2" style="font-size:0.9rem;">
+                                Ultimele 5 — @ev.HomeTeam
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+                                @foreach (var f in analytics.HomeForm.OrderByDescending(x => x.DateUtc))
+                                {
+                                    <div style="display:grid;grid-template-columns:24px 1fr auto;gap:0.5rem;
+                                                align-items:center;font-size:0.85rem;padding:0.4rem 0.5rem;
+                                                background:var(--bg-soft);border-radius:6px;">
+                                        <span style="font-weight:800;color:@FormColor(f.Result);">@FormLabel(f.Result)</span>
+                                        <span class="ethical-muted">
+                                            @(f.WasHome ? "vs" : "@") @f.Opponent
+                                        </span>
+                                        <span style="font-weight:700;">@f.GoalsFor:@f.GoalsAgainst</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="ethical-panel">
+                            <div class="ethical-panel-title mb-2" style="font-size:0.9rem;">
+                                Ultimele 5 — @ev.AwayTeam
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+                                @foreach (var f in analytics.AwayForm.OrderByDescending(x => x.DateUtc))
+                                {
+                                    <div style="display:grid;grid-template-columns:24px 1fr auto;gap:0.5rem;
+                                                align-items:center;font-size:0.85rem;padding:0.4rem 0.5rem;
+                                                background:var(--bg-soft);border-radius:6px;">
+                                        <span style="font-weight:800;color:@FormColor(f.Result);">@FormLabel(f.Result)</span>
+                                        <span class="ethical-muted">
+                                            @(f.WasHome ? "vs" : "@") @f.Opponent
+                                        </span>
+                                        <span style="font-weight:700;">@f.GoalsFor:@f.GoalsAgainst</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="ethical-panel text-center" style="padding:2.5rem 1.5rem;">
+                    <i data-lucide="bar-chart-3" style="width:42px;height:42px;color:var(--muted);margin-bottom:0.75rem;"></i>
+                    <h3 style="margin-bottom:0.4rem;">Statistici indisponibile</h3>
+                    <p class="ethical-muted mb-0">
+                        @(analytics?.Message ?? "Nu există date de formă pentru acest meci. Statisticile sunt disponibile doar pentru meciurile importate din API-FOOTBALL.")
+                    </p>
+                </div>
+            }
+        </div>
+
+        <!-- ===== TAB H2H ===== -->
+        <div class="eth-tab-panel" data-panel="h2h">
+            @if (analytics?.HasRealData == true && analytics.RecentMatches.Any())
+            {
+                var h = analytics.H2H;
+                <!-- Agregat H2H -->
+                <div class="ethical-panel mb-3">
+                    <div class="ethical-panel-title mb-3">
+                        <i data-lucide="swords"></i>
+                        <span>Bilanț întâlniri directe (@h.NumMatches meciuri)</span>
+                    </div>
+
+                    <div class="row g-2 text-center mb-3">
+                        <div class="col-4">
+                            <div style="background:var(--bg-soft);border-radius:8px;padding:0.8rem;">
+                                <div style="font-size:1.8rem;font-weight:900;color:#16A34A;">@h.HomeWins</div>
+                                <div class="ethical-muted" style="font-size:0.78rem;">Victorii @ev.HomeTeam</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div style="background:var(--bg-soft);border-radius:8px;padding:0.8rem;">
+                                <div style="font-size:1.8rem;font-weight:900;color:#6B7280;">@h.HomeDraws</div>
+                                <div class="ethical-muted" style="font-size:0.78rem;">Egaluri</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div style="background:var(--bg-soft);border-radius:8px;padding:0.8rem;">
+                                <div style="font-size:1.8rem;font-weight:900;color:#DC2626;">@h.AwayWins</div>
+                                <div class="ethical-muted" style="font-size:0.78rem;">Victorii @ev.AwayTeam</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ethical-muted text-center" style="font-size:0.85rem;">
+                        Total goluri marcate în întâlnirile directe: <strong>@h.TotalGoals</strong>
+                        @if (h.NumMatches > 0)
+                        {
+                            <span>(medie <strong>@((double)h.TotalGoals / h.NumMatches).ToString("0.##", roCulture)</strong> goluri/meci)</span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Tabel cu meciurile recente -->
+                <div class="ethical-panel">
+                    <div class="ethical-panel-title mb-2" style="font-size:0.95rem;">Istoric întâlniri directe</div>
+                    <div style="overflow-x:auto;">
+                        <table class="table table-sm align-middle mb-0" style="font-size:0.85rem;">
+                            <thead style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Competiție</th>
+                                    <th>Acasă</th>
+                                    <th class="text-center">Scor</th>
+                                    <th>Oaspete</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in analytics.RecentMatches.OrderByDescending(x => x.DateUtc))
+                                {
+                                    var homeWin = m.HomeScore > m.AwayScore;
+                                    var awayWin = m.AwayScore > m.HomeScore;
+                                    <tr>
+                                        <td class="ethical-muted">@m.DateUtc.ToRomanianTime().ToString("dd MMM yy")</td>
+                                        <td class="ethical-muted" style="font-size:0.78rem;">@m.Competition</td>
+                                        <td style="font-weight:@(homeWin ? "700" : "500");color:@(homeWin ? "#16A34A" : "inherit");">
+                                            @m.HomeTeam
+                                        </td>
+                                        <td class="text-center" style="font-weight:800;">
+                                            @m.HomeScore – @m.AwayScore
+                                        </td>
+                                        <td style="font-weight:@(awayWin ? "700" : "500");color:@(awayWin ? "#16A34A" : "inherit");">
+                                            @m.AwayTeam
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="ethical-panel text-center" style="padding:2.5rem 1.5rem;">
+                    <i data-lucide="swords" style="width:42px;height:42px;color:var(--muted);margin-bottom:0.75rem;"></i>
+                    <h3 style="margin-bottom:0.4rem;">Fără întâlniri directe</h3>
+                    <p class="ethical-muted mb-0">
+                        @(analytics?.Message ?? "Nu există istoric de întâlniri directe între aceste echipe.")
+                    </p>
+                </div>
+            }
+        </div>
+
+        
+        <div class="eth-tab-panel" data-panel="info">
+            <div class="ethical-panel mb-3">
+                <div class="ethical-panel-title mb-2"><i data-lucide="graduation-cap"></i><span>Ce înseamnă cota?</span></div>
+                <p class="ethical-muted mb-2" style="font-size:0.9rem;line-height:1.6;">
+                    <strong>Cota</strong> îți arată cât câștigi pentru fiecare 1 RON pariat. Exemplu: cu cota
+                    <strong>2.50</strong>, dacă pariezi 10 RON și câștigi, primești 25 RON înapoi (15 RON profit).
+                </p>
+                <p class="ethical-muted mb-0" style="font-size:0.9rem;line-height:1.6;">
+                    <strong>Probabilitatea implicită</strong> = 1 / cota. Cu cota 2.50, șansa estimată este
+                    1 ÷ 2.50 = <strong>40%</strong>. Cu cât cota e mai mare, cu atât bookmakerul consideră că
+                    pariul are șansă mai mică de a fi câștigat.
+                </p>
+            </div>
+
+            <div class="ethical-panel mb-3">
+                <div class="ethical-panel-title mb-2"><i data-lucide="percent"></i><span>Marja casei</span></div>
+                <p class="ethical-muted mb-0" style="font-size:0.9rem;line-height:1.6;">
+                    Dacă aduni probabilitățile implicite ale tuturor opțiunilor dintr-o piață, suma e
+                    <strong>peste 100%</strong> — diferența reprezintă avantajul matematic al bookmakerului
+                    (marja). Pe termen lung, această marjă transformă pariurile într-o activitate pierdantă
+                    statistic. <strong>Marja casei = motivul pentru care, în medie, bookmakerul câștigă.</strong>
+                </p>
+            </div>
+
+            <div class="ethical-panel" style="border-left:4px solid #DC2626;background:#FEF2F2;">
+                <div class="ethical-panel-title mb-2" style="color:#991B1B;">
+                    <i data-lucide="alert-triangle"></i><span>Joacă responsabil</span>
+                </div>
+                <p style="font-size:0.9rem;line-height:1.6;margin-bottom:0.5rem;color:#7F1D1D;">
+                    Pariază doar sume pe care îți permiți să le pierzi. Nu există strategii infailibile.
+                    Bookmakerul are întotdeauna avantajul matematic prin marja casei.
+                </p>
+                <p style="font-size:0.85rem;line-height:1.6;margin-bottom:0;color:#991B1B;">
+                    Dacă jocul îți afectează viața: <strong>Telverde 0800 800 099</strong> (Promis,
+                    Asociația Joc Responsabil) — apel gratuit.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    
+    <div style="position:sticky;top:90px;">
+        <div class="ethical-panel">
+            <div class="ethical-panel-header">
+                <div class="ethical-panel-title" style="font-size:1rem;">
+                    <i data-lucide="ticket"></i><span>Biletul tău</span>
+                </div>
+                <span class="rtp-badge">@slipItems.Count selecții</span>
+            </div>
+
+            @if (!slipItems.Any())
+            {
+                <div class="ethical-muted text-center" style="padding:1.5rem 0.5rem;font-size:0.88rem;">
+                    <i data-lucide="info" style="width:24px;height:24px;display:block;margin:0 auto 0.5rem;"></i>
+                    Nu ai nicio selecție. Apasă pe o cotă ca să o adaugi.
+                </div>
+            }
+            else
+            {
+                <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
+                    @foreach (var s in slipItems)
+                    {
+                        <div style="background:var(--bg-soft);border:1px solid var(--border);
+                                    border-radius:6px;padding:0.5rem 0.6rem;font-size:0.82rem;">
+                            <div class="ethical-muted" style="font-size:0.72rem;margin-bottom:0.1rem;">@s.EventName</div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;">
+                                <span style="font-weight:600;">@s.OutcomeName</span>
+                                <span style="font-weight:800;color:var(--primary);">@s.Odds.ToString("0.00", roCulture)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px;
+                            padding:0.6rem 0.75rem;margin-bottom:0.75rem;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+                        <span class="ethical-muted">Cotă totală</span>
+                        <strong>@totalOdds.ToString("0.00", roCulture)</strong>
+                    </div>
+                    <div class="ethical-muted" style="font-size:0.72rem;margin-top:0.2rem;">
+                        Șansă estimată: <strong>@ImpliedProbability(totalOdds)</strong> ·
+                        Cu cât mai multe selecții, cu atât scade probabilitatea.
+                    </div>
+                </div>
+
+                <a asp-controller="BetSlip" asp-action="Index" class="btn btn-primary w-100 justify-content-center">
+                    <i data-lucide="arrow-right"></i><span>Mergi la bilet (@slipItems.Count)</span>
+                </a>
+                <form asp-controller="BetSlip" asp-action="Clear" method="post" class="mt-2">
+                    <input type="hidden" name="ret" value="Details" />
+                    <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                        <i data-lucide="trash-2"></i><span>Golește biletul</span>
+                    </button>
+                </form>
+            }
+
+            <hr style="margin:1rem -1rem;" />
+
+            <div class="ethical-muted" style="font-size:0.72rem;line-height:1.5;">
+                <i data-lucide="shield" style="width:13px;height:13px;vertical-align:middle;"></i>
+                <strong>Joacă responsabil.</strong> Pariază doar sume pe care îți permiți să le pierzi.
+                <a asp-controller="Account" asp-action="Profile" style="color:var(--primary);">Setează limite →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        /* Live minute display */
+        .eth-live-minute {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            background: #FEF2F2; border: 1px solid #FECACA;
+            border-radius: 999px;
+            padding: 0.2rem 0.7rem;
+            font-size: 0.78rem; font-weight: 700; color: #991B1B;
+        }
+        .eth-live-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #DC2626;
+            box-shadow: 0 0 6px rgba(220,38,38,0.6);
+            animation: ethLiveBlink 1.2s infinite;
+        }
+        @@keyframes ethLiveBlink {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.35; }
+        }
+
+        .eth-tabs {
+            display: flex; gap: 0.25rem; margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .eth-tab {
+            display: flex; align-items: center; gap: 0.4rem;
+            background: transparent; border: none; padding: 0.6rem 1rem;
+            font-size: 0.88rem; font-weight: 600; color: var(--muted);
+            cursor: pointer; border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .eth-tab:hover { color: var(--text-strong); }
+        .eth-tab--active { color: var(--primary); border-bottom-color: var(--primary); }
+        .eth-tab i { width: 16px; height: 16px; }
+
+        .eth-tab-panel { display: none; animation: fadeIn 0.2s; }
+        .eth-tab-panel--active { display: block; }
+        @@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        .eth-outcome {
+            background: white; border: 1px solid var(--border); border-radius: 8px;
+            padding: 0.6rem; text-align: center;
+            display: flex; flex-direction: column; gap: 0.2rem;
+        }
+        .eth-outcome--selected { border-color: var(--primary); background: #EFF6FF; }
+        .eth-outcome--disabled { opacity: 0.55; }
+        .eth-outcome__name { font-weight: 700; font-size: 0.85rem; color: var(--text-strong); }
+        .eth-outcome__code { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .eth-outcome__odds { font-size: 1.3rem; font-weight: 800; color: var(--primary); margin: 0.2rem 0; }
+        .eth-outcome__prob { font-size: 0.72rem; color: var(--muted); }
+
+        @@media (max-width: 992px) {
+            div[style*="grid-template-columns:1fr 340px"] {
+                grid-template-columns: 1fr !important;
+            }
+            div[style*="position:sticky"] { position: static !important; }
+        }
+    </style>
+
+    <script>
+        (function () {
+            var tabs   = document.querySelectorAll('.eth-tab');
+            var panels = document.querySelectorAll('.eth-tab-panel');
+            tabs.forEach(function (t) {
+                t.addEventListener('click', function () {
+                    var target = t.dataset.tab;
+                    tabs.forEach(function (x) { x.classList.toggle('eth-tab--active', x === t); });
+                    panels.forEach(function (p) { p.classList.toggle('eth-tab-panel--active', p.dataset.panel === target); });
+                    if (window.lucide) lucide.createIcons();
+                });
+            });
+        })();
+
+        // Live minute — minut sincronizat din API-FOOTBALL, cu fallback la wall-clock
+        (function () {
+            var syncedMinute = @(ev.IsLive && ev.CurrentMinute.HasValue ? ev.CurrentMinute.Value.ToString() : "null");
+            var syncedAt = Date.now();
+
+            function calcMinute(startIso) {
+                if (syncedMinute !== null && syncedMinute > 0) {
+                    var secondsSinceSync = (Date.now() - syncedAt) / 1000;
+                    var interpolated = syncedMinute + Math.floor(secondsSinceSync / 60);
+                    if (interpolated >= 45 && interpolated < 47) return "45+";
+                    if (interpolated >= 90) return "90+";
+                    return interpolated + "'";
+                }
+                var start = new Date(startIso).getTime();
+                var diffMin = (Date.now() - start) / 60000;
+                if (diffMin < 1) return "1'";
+                if (diffMin <= 45) return Math.floor(diffMin) + "'";
+                if (diffMin <= 60) return "PAUZĂ";
+                var afterBreak = Math.floor(diffMin) - 15;
+                if (afterBreak <= 90) return afterBreak + "'";
+                return "90+";
+            }
+            function tick() {
+                document.querySelectorAll('.eth-live-minute').forEach(function (el) {
+                    var startIso = el.dataset.start;
+                    if (!startIso) return;
+                    var txt = el.querySelector('.eth-live-minute__txt');
+                    if (txt) txt.textContent = calcMinute(startIso);
+                });
+            }
+            tick();
+            setInterval(tick, 10000);
+        })();
+    </script>
+}

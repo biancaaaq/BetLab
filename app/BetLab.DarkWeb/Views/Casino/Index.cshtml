@@ -1,0 +1,435 @@
+@using System.Text.Json
+@model BetLab.DarkWeb.Models.CasinoPageViewModel
+@{
+    ViewData["Title"] = "Casino";
+
+    string SymbolEmoji(string name) => name switch
+    {
+        "Cherry"  => "🍒",
+        "Seven"   => "7️⃣",
+        "Bell"    => "🔔",
+        "Star"    => "⭐",
+        "Diamond" => "💎",
+        "Clover"  => "🍀",
+        "Crown"   => "👑",
+        _         => name
+    };
+
+    BetLab.DarkWeb.Models.CasinoSpinResponseViewModel? lastSpin = null;
+    if (TempData["CasinoLastSpin"] != null)
+    {
+        lastSpin = JsonSerializer.Deserialize<BetLab.DarkWeb.Models.CasinoSpinResponseViewModel>(
+            TempData["CasinoLastSpin"]!.ToString()!);
+    }
+
+    var isNearMiss = lastSpin != null && !lastSpin.IsWin &&
+                     lastSpin.ResultType == "Loss" && new Random().Next(2) == 0;
+    var totalPayout = Model.History.Sum(h => h.Payout);
+
+    var symbolGrid = lastSpin != null
+        ? (JsonSerializer.Deserialize<string[][]>(lastSpin.SymbolsJson) ?? Array.Empty<string[]>())
+        : new string[][] {
+            new[]{"Cherry","Bell","Star","Diamond","Seven"},
+            new[]{"Seven","Diamond","Crown","Cherry","Bell"},
+            new[]{"Clover","Cherry","Bell","Star","Crown"}
+          };
+    var isWin = lastSpin?.Payout > 0;
+}
+
+<div class="dark-page-header">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+        <div>
+            <h1 class="dark-page-title">🎰 Casino Zone</h1>
+            <p class="dark-page-subtitle">Joacă acum · Jackpot disponibil în orice moment</p>
+        </div>
+        <div class="dark-chip dark-chip-gold" style="font-size:0.9rem;padding:0.4rem 1rem;animation:hot-flash 2s infinite;">
+            🏆 JACKPOT: 48.320 RON
+        </div>
+    </div>
+</div>
+
+<!-- Urgency -->
+<div class="dark-urgency-bar mb-4">
+    🔥 Sesiune fierbinte! <strong style="color:white;margin:0 0.3rem;">@(new Random().Next(12,28)) jucători</strong>
+    au câștigat în ultimele 10 minute. Runda ta poate fi următoarea!
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="dark-alert dark-alert-danger">⚠️ @TempData["Error"]</div>
+}
+
+<div class="row g-4">
+    <!-- Stânga: lista jocuri -->
+    <div class="col-md-3">
+        <div class="dark-panel">
+            <div class="dark-panel-header">🎮 Jocuri</div>
+            <div>
+                <!-- Roulette entry -->
+                <a asp-controller="Roulette" asp-action="Index"
+                   style="display:flex;align-items:center;justify-content:space-between;
+                          padding:0.85rem 1rem;border-bottom:1px solid var(--border);
+                          text-decoration:none;transition:background 0.15s;background:transparent;
+                          border-left:3px solid transparent;">
+                    <div>
+                        <div style="font-weight:700;color:white;font-size:0.875rem;">🎡 Ruletă</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">Roulette</div>
+                    </div>
+                    <span class="hot-badge">HOT</span>
+                </a>
+                <!-- Blackjack entry -->
+                <a asp-controller="Blackjack" asp-action="Index"
+                   style="display:flex;align-items:center;justify-content:space-between;
+                          padding:0.85rem 1rem;border-bottom:1px solid var(--border);
+                          text-decoration:none;transition:background 0.15s;background:transparent;
+                          border-left:3px solid transparent;">
+                    <div>
+                        <div style="font-weight:700;color:white;font-size:0.875rem;">🃏 Blackjack</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">21</div>
+                    </div>
+                    <span class="hot-badge">HOT</span>
+                </a>
+                @foreach (var game in Model.Games.Where(g =>
+                    g.Type != "Roulette" && g.Type != "Blackjack"))
+                {
+                    var isSelected = game.CasinoGameId == Model.SelectedGame?.CasinoGameId;
+                    <a asp-controller="Casino" asp-action="Index" asp-route-gameId="@game.CasinoGameId"
+                       style="display:flex;align-items:center;justify-content:space-between;
+                              padding:0.85rem 1rem;border-bottom:1px solid var(--border);
+                              text-decoration:none;transition:background 0.15s;
+                              background:@(isSelected ? "rgba(220,38,38,0.1)" : "transparent");
+                              border-left:3px solid @(isSelected ? "var(--primary)" : "transparent");">
+                        <div>
+                            <div style="font-weight:700;color:white;font-size:0.875rem;">@game.Name</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);">@game.Type</div>
+                        </div>
+                        <span class="hot-badge">HOT</span>
+                    </a>
+                }
+            </div>
+        </div>
+
+        <!-- Fake stats -->
+        <div class="dark-panel mt-3">
+            <div class="dark-panel-header">📊 Statistici live</div>
+            <div class="dark-panel-body">
+                <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                    <div>
+                        <div class="dark-stat-label">Câștiguri astăzi</div>
+                        <div class="dark-stat-value" style="color:#34D399;">+@totalPayout.ToString("F0") RON</div>
+                    </div>
+                    <div>
+                        <div class="dark-stat-label">Rotiri sesiune</div>
+                        <div class="dark-stat-value">@Model.History.Count</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dreapta: joc activ -->
+    <div class="col-md-9">
+        @if (Model.SelectedGame != null)
+        {
+            <div class="dark-panel mb-4">
+                <div class="dark-panel-header dark-panel-header--red" id="slot-header">
+                    @if (isWin)
+                    { <span>🏆 CÂȘTIG!</span> }
+                    else if (isNearMiss)
+                    { <span style="color:var(--gold);">😱 APROAPE!</span> }
+                    else
+                    { <span>🎰 @Model.SelectedGame.Name <span class="hot-badge ms-2">FIERBINTE</span></span> }
+                </div>
+                <div class="dark-panel-body">
+                    @if (isNearMiss && lastSpin != null && !isWin)
+                    {
+                        <div class="near-miss-label mb-3">⚡ APROAPE AI CÂȘTIGAT! ⚡</div>
+                    }
+
+                    <!-- Slot grid — mereu vizibil -->
+                    <div class="dark-slot-grid mb-3" style="max-width:480px;margin:0 auto;" id="slot-grid">
+                        @for (int row = 0; row < symbolGrid.Length; row++)
+                        {
+                            <div class="dark-slot-row" id="slot-row-@row">
+                                @foreach (var sym in symbolGrid[row])
+                                {
+                                    <div class="dark-slot-cell @(row == 1 ? "dark-slot-cell--active" : "")">
+                                        @SymbolEmoji(sym)
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (lastSpin != null && isWin)
+                    {
+                        <div class="row g-2 text-center mb-3">
+                            <div class="col-6">
+                                <div class="dark-stat-label">Câștig</div>
+                                <div class="dark-stat-value" style="color:#34D399;">+@lastSpin.Payout.ToString("F2") RON</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="dark-stat-label">Multiplicator</div>
+                                <div class="dark-stat-value" style="color:var(--gold);">×@lastSpin.Multiplier</div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Controale -->
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-5">
+                            <label class="form-label-dark">Miză (RON)</label>
+                            <input type="number" id="stake-input" min="1" max="1000" step="0.50"
+                                   class="form-control-dark" value="50" />
+                        </div>
+                        <div class="col-sm-7" style="display:flex;gap:0.5rem;">
+                            <form asp-controller="Casino" asp-action="Spin" method="post" id="manual-spin-form" style="flex:1;">
+                                <input type="hidden" name="casinoGameId" value="@Model.SelectedGame.CasinoGameId" />
+                                <input type="hidden" name="stake" id="form-stake" value="50" />
+                                <button type="submit" id="spin-btn" class="btn-dark-primary pulse w-100" style="font-size:1rem;padding:0.85rem;">
+                                    🎰 ROTEȘTE
+                                </button>
+                            </form>
+                            <button id="auto-btn" onclick="toggleAutoSpin(@Model.SelectedGame.CasinoGameId)"
+                                    class="btn-dark-primary w-100"
+                                    style="font-size:0.9rem;padding:0.85rem;background:#7C3AED;border-color:#7C3AED;flex:1;">
+                                ⚡ AUTO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var autoSpinning = false;
+var autoSpinTimer = null;
+var spinInterval = null;
+
+var allSymbols = ['🍒','7️⃣','🔔','⭐','💎','🍀','👑'];
+var symbolMap = {
+    'Cherry':'🍒','Seven':'7️⃣','Bell':'🔔','Star':'⭐',
+    'Diamond':'💎','Clover':'🍀','Crown':'👑'
+};
+function symbolEmoji(name) { return symbolMap[name] || name; }
+
+function getRows() {
+    return [
+        document.getElementById('slot-row-0'),
+        document.getElementById('slot-row-1'),
+        document.getElementById('slot-row-2')
+    ];
+}
+
+function startSpinAnimation() {
+    getRows().forEach(function(row) {
+        if (!row) return;
+        row.classList.add('slot-spinning');
+    });
+    spinInterval = setInterval(function() {
+        getRows().forEach(function(row) {
+            if (!row) return;
+            Array.from(row.querySelectorAll('.dark-slot-cell')).forEach(function(cell) {
+                cell.textContent = allSymbols[Math.floor(Math.random() * allSymbols.length)];
+            });
+        });
+    }, 80);
+}
+
+function stopSpinAnimation(grid) {
+    clearInterval(spinInterval);
+    spinInterval = null;
+    var rows = getRows();
+    rows.forEach(function(row, r) {
+        if (!row || !grid[r]) return;
+        row.classList.remove('slot-spinning');
+        var cells = row.querySelectorAll('.dark-slot-cell');
+        grid[r].forEach(function(sym, c) {
+            if (cells[c]) cells[c].textContent = symbolEmoji(sym);
+        });
+    });
+}
+
+function triggerWinAnimation() {
+    var rows = getRows();
+    rows.forEach(function(row, r) {
+        if (!row) return;
+        row.classList.remove('slot-win-row');
+        row.querySelectorAll('.dark-slot-cell').forEach(function(cell) {
+            cell.classList.remove('slot-win-cell');
+        });
+    });
+    // force reflow so re-adding the class re-triggers animation
+    void document.getElementById('slot-grid').offsetWidth;
+    rows.forEach(function(row, r) {
+        if (!row) return;
+        row.classList.add('slot-win-row');
+        row.querySelectorAll('.dark-slot-cell').forEach(function(cell) {
+            cell.classList.add('slot-win-cell');
+        });
+    });
+    setTimeout(function() {
+        rows.forEach(function(row) {
+            if (!row) return;
+            row.classList.remove('slot-win-row');
+            row.querySelectorAll('.dark-slot-cell').forEach(function(cell) {
+                cell.classList.remove('slot-win-cell');
+            });
+        });
+    }, 1200);
+}
+
+function toggleAutoSpin(gameId) {
+    if (autoSpinning) stopAutoSpin();
+    else startAutoSpin(gameId);
+}
+
+function startAutoSpin(gameId) {
+    autoSpinning = true;
+    var btn = document.getElementById('auto-btn');
+    btn.textContent = '⏹ STOP';
+    btn.style.background = '#DC2626';
+    btn.style.borderColor = '#DC2626';
+    btn.classList.add('pulse');
+    document.getElementById('spin-btn').disabled = true;
+    document.getElementById('stake-input').disabled = true;
+    runAutoSpin(gameId);
+}
+
+function stopAutoSpin() {
+    autoSpinning = false;
+    clearTimeout(autoSpinTimer);
+    clearInterval(spinInterval);
+    spinInterval = null;
+    getRows().forEach(function(r) { if (r) r.classList.remove('slot-spinning'); });
+    var btn = document.getElementById('auto-btn');
+    btn.textContent = '⚡ AUTO';
+    btn.style.background = '#7C3AED';
+    btn.style.borderColor = '#7C3AED';
+    btn.classList.remove('pulse');
+    document.getElementById('spin-btn').disabled = false;
+    document.getElementById('stake-input').disabled = false;
+}
+
+function runAutoSpin(gameId) {
+    if (!autoSpinning) return;
+    var stake = parseFloat(document.getElementById('stake-input').value) || 50;
+
+    startSpinAnimation();
+
+    fetch('/Casino/SpinAjax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'casinoGameId=' + gameId + '&stake=' + stake
+    })
+    .then(function(r) {
+        if (!r.ok) { stopAutoSpin(); return null; }
+        return r.json();
+    })
+    .then(function(data) {
+        if (!data) return;
+
+        var grid = [];
+        try { grid = JSON.parse(data.symbolsJson); } catch(e) {}
+
+        // Log auto-spin round via proxy
+        if (typeof darkLog === 'function') {
+            darkLog('CasinoSpinClicked', 'Casino', {
+                targetType: 'AutoSpin', targetId: 'auto-btn',
+                metadataJson: JSON.stringify({ casinoGameId: gameId, stake: stake, mode: 'auto' })
+            });
+            darkLog('CasinoRoundCompleted', 'Casino', {
+                targetType: 'Round', targetId: String(data.casinoRoundId || ''),
+                newValue: data.resultType || '',
+                metadataJson: JSON.stringify({ multiplier: data.multiplier, payout: data.payout })
+            });
+        }
+
+        // Oprire animație cu rezultatul real după 600ms
+        setTimeout(function() {
+            stopSpinAnimation(grid);
+
+            if (data.payout > 0) {
+                triggerWinAnimation();
+            }
+
+            if (!autoSpinning) return;
+
+            if (data.newBalance < stake) {
+                stopAutoSpin();
+                return;
+            }
+
+            autoSpinTimer = setTimeout(function() { runAutoSpin(gameId); }, 500);
+        }, 600);
+    })
+    .catch(function() { stopAutoSpin(); });
+}
+
+// Dark pattern: miza persistă via localStorage 
+(function () {
+    var STAKE_KEY = 'dark_last_stake';
+    var input = document.getElementById('stake-input');
+    if (!input) return;
+
+    // Restaurare miză salvată (default 50 dacă nu există)
+    var saved = parseFloat(localStorage.getItem(STAKE_KEY));
+    if (!isNaN(saved) && saved > 0) {
+        input.value = saved;
+        var hidden = document.getElementById('form-stake');
+        if (hidden) hidden.value = saved;
+    }
+
+    // Salvare la fiecare modificare + log CasinoStakeChanged
+    var stakeLogTimeout = null;
+    input.addEventListener('input', function () {
+        var v = parseFloat(this.value);
+        if (!isNaN(v) && v > 0) localStorage.setItem(STAKE_KEY, v);
+        var f = document.getElementById('form-stake');
+        if (f) f.value = this.value;
+        // Log cu debounce 800ms
+        clearTimeout(stakeLogTimeout);
+        var captured = v;
+        stakeLogTimeout = setTimeout(function() {
+            if (!isNaN(captured) && captured > 0 && typeof darkLog === 'function') {
+                darkLog('CasinoStakeChanged', 'Casino', {
+                    targetType: 'StakeInput', targetId: 'stake-input',
+                    newValue: String(captured)
+                });
+            }
+        }, 800);
+    });
+})();
+
+@if (isWin)
+{
+    <text>
+    // Trigger win animation on page load after manual spin
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(triggerWinAnimation, 200);
+    });
+    </text>
+}
+@if (isNearMiss && lastSpin != null)
+{
+    <text>
+    // Log NearMiss display — dark pattern: near miss exacerbates gambling urge
+    window.addEventListener('DOMContentLoaded', function() {
+        if (typeof darkLog === 'function') {
+            darkLog('NearMissShown', 'Casino', {
+                targetType: 'Display', targetId: 'near-miss-label',
+                metadataJson: JSON.stringify({
+                    roundId: '@lastSpin.CasinoRoundId',
+                    stake: '@lastSpin.Stake.ToString("F2")',
+                    resultType: '@lastSpin.ResultType'
+                })
+            });
+        }
+    });
+    </text>
+}
+</script>
+}

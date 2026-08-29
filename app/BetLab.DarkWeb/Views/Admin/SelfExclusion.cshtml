@@ -1,0 +1,187 @@
+﻿@model List<BetLab.DarkWeb.Models.AdminExclusionViewModel>
+@{
+    ViewData["Title"] = "Admin — Excluderi";
+    int activeCount = Model.Count(e => e.IsActive);
+    var cnpExclusions = ViewBag.CnpExclusions as List<BetLab.DarkWeb.Models.CnpExclusionViewModel>
+                        ?? new List<BetLab.DarkWeb.Models.CnpExclusionViewModel>();
+}
+
+<!-- Registru CNP Autoexcludere-->
+<div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary">← Dashboard</a>
+        <h2 class="h5 fw-bold mb-0 ms-1" style="color:#fff;">🪪 Registru CNP Autoexcludere</h2>
+        <span class="ms-auto" style="font-size:0.8rem;color:#94a3b8;">
+            @cnpExclusions.Count CNP-uri blocate
+        </span>
+    </div>
+    <div class="p-2 rounded mb-2" style="background:#0f172a;border:1px solid #334155;font-size:0.78rem;color:#64748b;">
+        CNP-urile de mai jos blochează crearea oricărui cont nou cu acel CNP (simulare Registru ONJN).
+        La autoexcludere, CNP-ul se adaugă automat. Ridicarea se face manual de admin cu justificare.
+    </div>
+    <div class="card" style="background:#1e293b;border:1px solid #334155;">
+        <div class="card-body p-0">
+            @if (!cnpExclusions.Any())
+            {
+                <div class="text-center text-muted py-4" style="font-size:0.85rem;">
+                    Niciun CNP în registru.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0"
+                           style="--bs-table-bg:#1e293b;--bs-table-hover-bg:#0f172a;font-size:0.82rem;">
+                        <thead>
+                            <tr style="border-bottom:1px solid #334155;font-size:0.7rem;text-transform:uppercase;color:#64748b;">
+                                <th class="px-4 py-3">CNP (mascat)</th>
+                                <th class="px-3 py-3">User asociat</th>
+                                <th class="px-3 py-3">Exclus la</th>
+                                <th class="px-3 py-3">Motiv</th>
+                                <th class="px-3 py-3 text-end">Acțiune</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in cnpExclusions)
+                            {
+                                <tr style="border-bottom:1px solid #0f172a;">
+                                    <td class="px-4 py-3">
+                                        <code style="color:#a5b4fc;font-size:0.85rem;">@c.CnpMasked</code>
+                                    </td>
+                                    <td class="px-3 py-3" style="color:#94a3b8;">
+                                        @(c.UserName ?? "—")
+                                    </td>
+                                    <td class="px-3 py-3" style="color:#94a3b8;">
+                                        @c.ExcludedAt.ToRomanianTime().ToString("dd MMM yyyy HH:mm")
+                                    </td>
+                                    <td class="px-3 py-3" style="color:#94a3b8;">
+                                        @(c.Reason ?? "—")
+                                    </td>
+                                    <td class="px-3 py-3 text-end">
+                                        <form asp-action="RemoveCnpExclusion" method="post" class="d-inline"
+                                              onsubmit="return confirm('Ridici CNP-ul din registru? Această persoană va putea crea un cont nou.')">
+                                            <input type="hidden" name="cnpId" value="@c.Id" />
+                                            <button class="btn btn-sm btn-outline-danger" style="font-size:0.7rem;">
+                                                Ridică
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+<hr style="border-color:#334155;margin-bottom:1.5rem;" />
+
+<!-- Cereri autoexcludere user-->
+<div class="mb-4 d-flex align-items-center gap-2 flex-wrap">
+    <h1 class="h4 fw-bold mb-0" style="color:#fff;">🔒 Cereri auto-excludere</h1>
+    <span class="ms-auto text-muted" style="font-size:0.82rem;">
+        @activeCount active · @Model.Count total
+    </span>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{ <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div> }
+@if (TempData["AdminError"] != null)
+{ <div class="alert alert-danger mb-3">⚠️ @TempData["AdminError"]</div> }
+
+<div class="mb-3 p-3 rounded" style="background:#1e293b;border:1px solid #7c3aed;font-size:0.82rem;color:#c4b5fd;">
+    <strong>ℹ️ Flux auto-excludere:</strong>
+    Utilizatorii pot solicita excluderea din propriul profil. Cererea se aprobă automat.
+    Ca administrator poți doar <strong>ridica</strong> o excludere (cu prudență, conform legislației).
+</div>
+
+<div class="card" style="background:#1e293b;border:1px solid #334155;">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center text-muted py-5">Nu există cereri de excludere.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0" style="--bs-table-bg:#1e293b;--bs-table-hover-bg:#0f172a;">
+                    <thead>
+                        <tr style="border-bottom:1px solid #334155;font-size:0.72rem;text-transform:uppercase;color:#64748b;">
+                            <th class="px-4 py-3">Utilizator</th>
+                            <th class="px-3 py-3">Exclus la</th>
+                            <th class="px-3 py-3">Perioadă</th>
+                            <th class="px-3 py-3">Motiv</th>
+                            <th class="px-3 py-3">Tip</th>
+                            <th class="px-3 py-3">Status</th>
+                            <th class="px-3 py-3 text-end">Acțiune</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ex in Model.OrderByDescending(e => e.IsActive).ThenByDescending(e => e.ExcludedAt))
+                        {
+                            <tr style="border-bottom:1px solid #0f172a;@(!ex.IsActive ? "opacity:.45;" : "")">
+                                <td class="px-4 py-3">
+                                    <div style="color:#f1f5f9;font-weight:600;">@ex.UserName</div>
+                                    <div style="color:#94a3b8;font-size:0.75rem;">@ex.UserEmail</div>
+                                </td>
+                                <td class="px-3 py-3" style="color:#94a3b8;font-size:0.82rem;">
+                                    @ex.ExcludedAt.ToRomanianTime().ToString("dd MMM yyyy HH:mm")
+                                </td>
+                                <td class="px-3 py-3">
+                                    @if (ex.ExcludedUntil == null)
+                                    {
+                                        <span class="badge bg-danger" style="font-size:0.72rem;">Permanent</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#fbbf24;font-size:0.82rem;">
+                                            până la @ex.ExcludedUntil.Value.ToRomanianTime().ToString("dd MMM yyyy")
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-3 py-3" style="color:#94a3b8;font-size:0.82rem;max-width:200px;">
+                                    @(string.IsNullOrWhiteSpace(ex.Reason) ? "—" : ex.Reason)
+                                </td>
+                                <td class="px-3 py-3">
+                                    <span class="badge @(ex.ImposedBy == "User" ? "bg-info text-dark" : "bg-secondary")"
+                                          style="font-size:0.72rem;">
+                                        @(ex.ImposedBy == "User" ? "Auto-excludere" : "Admin")
+                                    </span>
+                                </td>
+                                <td class="px-3 py-3">
+                                    @if (ex.IsActive)
+                                    {
+                                        <span class="badge" style="background:#7c3aed;font-size:0.72rem;">Activă</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary" style="font-size:0.72rem;">Ridicată</span>
+                                        @if (ex.LiftedAt.HasValue)
+                                        { <div style="color:#64748b;font-size:0.7rem;">@ex.LiftedAt.Value.ToRomanianTime().ToString("dd MMM")</div> }
+                                    }
+                                </td>
+                                <td class="px-3 py-3 text-end">
+                                    @if (ex.IsActive)
+                                    {
+                                        <form asp-action="LiftExclusion" method="post" class="d-inline"
+                                              onsubmit="return confirm('Ridici excluderea lui @ex.UserName? Aceasta este o acțiune ireversibilă care trebuie justificată.')">
+                                            <input type="hidden" name="exclusionId" value="@ex.Id" />
+                                            <button class="btn btn-sm btn-outline-warning" style="font-size:0.72rem;">
+                                                Ridică
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted" style="font-size:0.75rem;">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

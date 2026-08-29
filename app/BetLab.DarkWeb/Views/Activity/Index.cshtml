@@ -1,0 +1,166 @@
+﻿@model BetLab.DarkWeb.Models.MyActivityPageViewModel
+@{
+    ViewData["Title"] = "Activitate";
+
+    var wonBets   = Model.Bets.Where(b => b.Status == "Won").ToList();
+    var totalWon  = wonBets.Sum(b => b.PotentialPayout);
+    var totalLost = Model.Bets.Where(b => b.Status == "Lost").Sum(b => b.Stake);
+    // Net — afișăm doar dacă e pozitiv, altfel ascundem
+    var net = totalWon - totalLost;
+
+    var deposits = Model.Transactions.Where(t => t.Type == "Deposit").Sum(t => t.Amount);
+}
+
+<div class="dark-page-header">
+    <h1 class="dark-page-title">📊 Activitatea mea</h1>
+</div>
+
+<!-- Statistici — câștigurile mari, pierderile minimizate -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;border-color:#065F46;">
+            <div class="dark-stat-value" style="color:#34D399;">@totalWon.ToString("F2") RON</div>
+            <div class="dark-stat-label">Total câștigat</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;">
+            <div class="dark-stat-value">@Model.Bets.Count</div>
+            <div class="dark-stat-label">Pariuri plasate</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;border-color:rgba(245,158,11,0.3);">
+            <div class="dark-stat-value" style="color:var(--gold);">@wonBets.Count</div>
+            <div class="dark-stat-label">Pariuri câștigate</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dark-panel text-center" style="padding:1.2rem;">
+            <!-- Soldul curent, nu pierderea netă -->
+            <div class="dark-stat-value" style="color:#34D399;">@(Model.Wallet?.Balance.ToString("F2") ?? "—") RON</div>
+            <div class="dark-stat-label">Sold curent</div>
+        </div>
+    </div>
+</div>
+
+@if (net > 0)
+{
+    <div class="dark-alert dark-alert-success mb-4">
+        🏆 Ești pe profit! Ai câștigat net <strong>+@net.ToString("F2") RON</strong> până acum.
+    </div>
+}
+else
+{
+    <!-- Pierderile nu sunt menționate explicit — mesaj neutru -->
+    <div class="dark-urgency-bar mb-4">
+        🎯 Continuă să pariezi — un câștig mare îți poate schimba ziua!
+    </div>
+}
+
+<!-- Istoricul pariurilor — câștigurile în față -->
+<div class="dark-panel mb-4">
+    <div class="dark-panel-header">🎯 Pariurile mele</div>
+    @if (!Model.Bets.Any())
+    {
+        <div style="padding:2rem;text-align:center;color:var(--text-muted);">
+            Nu ai pariuri încă.
+            <a asp-controller="Events" asp-action="Index" style="color:var(--primary-bright);font-weight:700;">
+                Pariează acum →
+            </a>
+        </div>
+    }
+    else
+    {
+        <div>
+            @foreach (var bet in Model.Bets.OrderByDescending(b => b.PlacedAt))
+            {
+                var isWon  = bet.Status == "Won";
+                var isLost = bet.Status == "Lost";
+                <div style="padding:0.9rem 1.2rem;border-bottom:1px solid var(--border);
+                            border-left:3px solid @(isWon ? "var(--green)" : isLost ? "#1F1F1F" : "var(--primary)");">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">
+                        <span style="font-weight:700;font-size:0.875rem;">
+                            Bilet #@bet.BetSlipId
+                        </span>
+                        <span>
+                            @if (isWon)
+                            {
+                                <span style="color:#34D399;font-weight:800;font-size:0.95rem;">+@bet.PotentialPayout.ToString("F2") RON 🏆</span>
+                            }
+                            else if (isLost)
+                            {
+                                <!-- Pierderea minimizată — fără sumă, fără roșu -->
+                                <span style="color:var(--text-dim);font-size:0.8rem;">Fără câștig</span>
+                            }
+                            else
+                            {
+                                <span class="dark-chip dark-chip-gray">În curs</span>
+                            }
+                        </span>
+                    </div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);">
+                        Miză: @bet.Stake.ToString("F2") RON ·
+                        Cotă: @bet.TotalOdds.ToString("F2") ·
+                        @bet.PlacedAt.ToRomanianTime().ToString("dd MMM · HH:mm")
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Tranzacții — depunerile în față, retragerile minimizate -->
+<div class="dark-panel">
+    <div class="dark-panel-header">💳 Tranzacții</div>
+    @if (!Model.Transactions.Any())
+    {
+        <div style="padding:1.5rem;text-align:center;color:var(--text-muted);">Nicio tranzacție.</div>
+    }
+    else
+    {
+        <div style="overflow-x:auto;">
+            <table class="dark-table">
+                <thead>
+                    <tr>
+                        <th>Tip</th>
+                        <th>Sumă</th>
+                        <th>Sold după</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tx in Model.Transactions.OrderByDescending(t => t.CreatedAt))
+                    {
+                        var isDeposit = tx.Type is "Deposit" or "Win";
+                        <tr>
+                            <td>
+                                @if (isDeposit)
+                                {
+                                    <span style="color:#34D399;font-weight:700;">@tx.Type</span>
+                                }
+                                else
+                                {
+                                    <!-- Pierderile fără culoare, fără accent -->
+                                    <span style="color:var(--text-dim);">@tx.Type</span>
+                                }
+                            </td>
+                            <td>
+                                @if (isDeposit)
+                                {
+                                    <span style="color:#34D399;font-weight:700;">+@tx.Amount.ToString("F2") RON</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-dim);">@tx.Amount.ToString("F2") RON</span>
+                                }
+                            </td>
+                            <td style="color:var(--text-muted);">@tx.BalanceAfter.ToString("F2") RON</td>
+                            <td style="color:var(--text-dim);font-size:0.8rem;">@tx.CreatedAt.ToRomanianTime().ToString("dd MMM · HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

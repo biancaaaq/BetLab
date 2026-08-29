@@ -1,0 +1,476 @@
+﻿@model BetLab.EthicalWeb.Models.RoulettePageViewModel
+@{
+    ViewData["Title"] = "Ruletă";
+    var last = Model.LastSpin;
+    var lastNumber = last?.ResultNumber ?? -1;
+
+    var totalStaked = Model.History.Sum(h => h.Stake);
+    var totalPayout = Model.History.Sum(h => h.Payout);
+    var netResult   = totalPayout - totalStaked;
+
+    var redNums = new[] {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36};
+    var row1 = new[] {3,6,9,12,15,18,21,24,27,30,33,36};
+    var row2 = new[] {2,5,8,11,14,17,20,23,26,29,32,35};
+    var row3 = new[] {1,4,7,10,13,16,19,22,25,28,31,34};
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">Ruletă</h1>
+        <p class="eth-page-subtitle">Un singur zero · Avantaj cazinou 2.7% · Probabilități afișate transparent</p>
+    </div>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="eth-alert eth-alert-danger mb-4">
+        <i data-lucide="alert-circle"></i> @TempData["Error"]
+    </div>
+}
+
+<!-- 1. ROATA -->
+<div style="display:flex;justify-content:center;margin-bottom:1.5rem;">
+    <div style="position:relative;display:inline-block;">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+                    width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;
+                    border-top:18px solid #0d6efd;z-index:10;"></div>
+        <canvas id="roulette-canvas" width="300" height="300"
+                style="border-radius:50%;box-shadow:0 4px 24px rgba(0,0,0,0.15);display:block;"></canvas>
+    </div>
+</div>
+
+<!-- 2. PARIURI -->
+<div class="eth-panel mb-4">
+    <div class="eth-panel-header"><i data-lucide="circle-dot"></i> Plasează pariul</div>
+    <div class="eth-panel-body">
+        <form asp-controller="Roulette" asp-action="Spin" method="post" id="roulette-form">
+            <input type="hidden" name="betType"  id="hidden-bet-type"  value="" />
+            <input type="hidden" name="betValue" id="hidden-bet-value" value="" />
+
+            <!-- Pariuri externe -->
+            <div class="mb-3">
+                <div class="form-label fw-bold mb-2" style="font-size:0.82rem;">
+                    Pariuri externe <span class="text-muted fw-normal">(48.6% · plată 1:1)</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.3rem;">
+                    @{
+                        var externalBets = new[]
+                        {
+                            ("RedBlack", "Red",   "🔴 Roșu",  "48.6%", "1:1"),
+                            ("RedBlack", "Black", "⚫ Negru",  "48.6%", "1:1"),
+                            ("OddEven",  "Odd",   "Impar",    "48.6%", "1:1"),
+                            ("OddEven",  "Even",  "Par",      "48.6%", "1:1"),
+                            ("LowHigh",  "Low",   "1–18",     "48.6%", "1:1"),
+                            ("LowHigh",  "High",  "19–36",    "48.6%", "1:1"),
+                        };
+                    }
+                    @foreach (var (type, value, label, prob, payout) in externalBets)
+                    {
+                        <button type="button" class="roulette-bet-btn"
+                                data-type="@type" data-value="@value"
+                                onclick="selectBet(this)">
+                            <span class="roulette-bet-label" style="font-size:0.8rem;">@label</span>
+                            <span class="roulette-bet-prob" style="font-size:0.65rem;">@prob</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Duzine & Coloane -->
+            <div class="mb-3">
+                <div class="form-label fw-bold mb-2" style="font-size:0.82rem;">
+                    Duzine & Coloane <span class="text-muted fw-normal">(33.3% · plată 2:1)</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.3rem;">
+                    @{
+                        var dozenBets = new[]
+                        {
+                            ("Dozen",  "1", "1–12"),
+                            ("Dozen",  "2", "13–24"),
+                            ("Dozen",  "3", "25–36"),
+                            ("Column", "1", "Col. 1"),
+                            ("Column", "2", "Col. 2"),
+                            ("Column", "3", "Col. 3"),
+                        };
+                    }
+                    @foreach (var (type, value, label) in dozenBets)
+                    {
+                        <button type="button" class="roulette-bet-btn"
+                                data-type="@type" data-value="@value"
+                                onclick="selectBet(this)">
+                            <span class="roulette-bet-label" style="font-size:0.8rem;">@label</span>
+                            <span class="roulette-bet-prob" style="font-size:0.65rem;">33.3%</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Număr direct 3×12 -->
+            <div class="mb-3">
+                <div class="form-label fw-bold mb-2" style="font-size:0.82rem;">
+                    Număr direct <span class="text-muted fw-normal">(2.7% · plată 35:1)</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1.8rem repeat(12,1fr);grid-template-rows:repeat(3,1.8rem);gap:0.25rem;align-items:stretch;">
+                    <button type="button" class="roulette-num-btn roulette-num-btn--green"
+                            style="grid-row:1/span 3;height:100%;font-size:0.7rem;"
+                            data-type="Straight" data-value="0" onclick="selectBet(this)">0</button>
+                    @foreach (var n in row1)
+                    {
+                        var cls1 = redNums.Contains(n) ? "roulette-num-btn--red" : "roulette-num-btn--black";
+                        <button type="button" class="roulette-num-btn @cls1" style="font-size:0.68rem;"
+                                data-type="Straight" data-value="@n" onclick="selectBet(this)">@n</button>
+                    }
+                    @foreach (var n in row2)
+                    {
+                        var cls2 = redNums.Contains(n) ? "roulette-num-btn--red" : "roulette-num-btn--black";
+                        <button type="button" class="roulette-num-btn @cls2" style="font-size:0.68rem;"
+                                data-type="Straight" data-value="@n" onclick="selectBet(this)">@n</button>
+                    }
+                    @foreach (var n in row3)
+                    {
+                        var cls3 = redNums.Contains(n) ? "roulette-num-btn--red" : "roulette-num-btn--black";
+                        <button type="button" class="roulette-num-btn @cls3" style="font-size:0.68rem;"
+                                data-type="Straight" data-value="@n" onclick="selectBet(this)">@n</button>
+                    }
+                </div>
+            </div>
+
+            <!-- Sumar pariu + miză -->
+            <div class="roulette-bet-summary" id="bet-summary" style="display:none;">
+                <div class="roulette-bet-summary-label">
+                    Pariu selectat: <strong id="summary-label">—</strong>
+                    <span class="text-muted ms-2" id="summary-prob"></span>
+                </div>
+                <div class="row g-3 mt-2 align-items-end">
+                    <div class="col-sm-5">
+                        <label class="form-label fw-semibold">Miză (RON)</label>
+                        <input type="number" name="stake" id="stake-input"
+                               min="1" max="1000" step="0.50"
+                               class="form-control" placeholder="ex: 20" required />
+                    </div>
+                    <div class="col-sm-7">
+                        <button type="submit" class="btn-eth w-100">
+                            <i data-lucide="rotate-cw"></i> Rotește
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <p id="no-bet-hint" class="text-muted mt-3 mb-0" style="font-size:0.82rem;">
+                ← Selectează un tip de pariu pentru a continua.
+            </p>
+        </form>
+    </div>
+</div>
+
+<!-- 3. REZULTAT + STATISTICI + ULTIMELE NUMERE -->
+<div class="row g-3 mb-4">
+
+    <!-- Rezultat ultimă rotire -->
+    <div class="col-md-4">
+        <div class="eth-panel h-100">
+            <div class="eth-panel-header"><i data-lucide="target"></i> Ultima rotire</div>
+            <div class="eth-panel-body text-center">
+                @if (last != null)
+                {
+                    <div class="roulette-wheel-display roulette-wheel-display--spun">
+                        <div class="roulette-number roulette-number--@last.ResultColor.ToLower()">
+                            @last.ResultNumber
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        @if (last.IsWin)
+                        {
+                            <span class="eth-chip eth-chip-green">✓ +@last.Payout.ToString("F2") RON</span>
+                        }
+                        else
+                        {
+                            <span class="eth-chip eth-chip-gray">−@last.Stake.ToString("F2") RON</span>
+                        }
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size:0.78rem;">
+                        Sold: <strong>@last.NewBalance.ToString("F2") RON</strong>
+                    </p>
+                }
+                else
+                {
+                    <div class="roulette-wheel-display">
+                        <div class="roulette-number roulette-number--idle">?</div>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size:0.82rem;">Nicio rotire încă</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Ultimele numere -->
+    <div class="col-md-5">
+        <div class="eth-panel h-100">
+            <div class="eth-panel-header"><i data-lucide="clock"></i> Ultimele numere</div>
+            <div class="eth-panel-body">
+                @if (Model.History.Any())
+                {
+                    <div class="roulette-history-numbers">
+                        @foreach (var h in Model.History.Take(20))
+                        {
+                            <span class="roulette-mini-number roulette-mini-number--@h.ResultColor.ToLower()">
+                                @h.ResultNumber
+                            </span>
+                        }
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size:0.72rem;">
+                        Fiecare rotire este independentă — istoricul nu influențează rezultatele viitoare.
+                    </p>
+                }
+                else
+                {
+                    <p class="text-muted mb-0" style="font-size:0.82rem;">Nicio rotire înregistrată.</p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistici sesiune -->
+    <div class="col-md-3">
+        <div class="eth-panel h-100">
+            <div class="eth-panel-header"><i data-lucide="bar-chart-2"></i> Sesiunea ta</div>
+            <div class="eth-panel-body">
+                <div class="row g-2 text-center">
+                    <div class="col-6">
+                        <div class="stat-value">@Model.History.Count</div>
+                        <div class="stat-label">Rotiri</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-value">@totalStaked.ToString("F0") RON</div>
+                        <div class="stat-label">Mizat</div>
+                    </div>
+                    <div class="col-12 mt-1">
+                        <div class="stat-value @(netResult >= 0 ? "text-success" : "text-danger")">
+                            @(netResult >= 0 ? "+" : "")@netResult.ToString("F2") RON
+                        </div>
+                        <div class="stat-label">Rezultat net</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. ISTORIC ROTIRI -->
+<div class="eth-panel">
+    <div class="eth-panel-header"><i data-lucide="list"></i> Istoric rotiri</div>
+    <div class="eth-panel-body p-0">
+        @if (!Model.History.Any())
+        {
+            <div class="p-4 text-center text-muted">Nicio rotire înregistrată încă.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="eth-table">
+                    <thead>
+                        <tr>
+                            <th>Pariu</th>
+                            <th>Miză</th>
+                            <th>Număr</th>
+                            <th>Culoare</th>
+                            <th>Rezultat</th>
+                            <th>Ora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var h in Model.History)
+                        {
+                            <tr class="@(h.IsWin ? "eth-table-row--win" : "")">
+                                <td style="font-size:0.8rem;">@h.BetType / @h.BetValue</td>
+                                <td>@h.Stake.ToString("F2") RON</td>
+                                <td>
+                                    <span class="roulette-mini-number roulette-mini-number--@h.ResultColor.ToLower()">
+                                        @h.ResultNumber
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (h.ResultColor == "Red")
+                                    { <span class="eth-chip eth-chip-red" style="font-size:0.7rem;">Roșu</span> }
+                                    else if (h.ResultColor == "Black")
+                                    { <span class="eth-chip eth-chip-gray" style="font-size:0.7rem;">Negru</span> }
+                                    else
+                                    { <span class="eth-chip eth-chip-green" style="font-size:0.7rem;">Verde</span> }
+                                </td>
+                                <td>
+                                    @if (h.IsWin)
+                                    { <span class="text-success fw-semibold">+@h.Payout.ToString("F2") RON</span> }
+                                    else
+                                    { <span class="text-danger">−@h.Stake.ToString("F2") RON</span> }
+                                </td>
+                                <td class="text-muted" style="font-size:0.78rem;">@h.CreatedAt.ToRomanianTime().ToString("HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<style>
+.roulette-num-btn {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    color: white;
+    padding: 0;
+    cursor: pointer;
+    font-weight: 700;
+    text-align: center;
+    transition: all 0.12s;
+    width: 100%;
+    aspect-ratio: 1;
+}
+.roulette-num-btn--red   { background: #dc3545; }
+.roulette-num-btn--black { background: #212529; }
+.roulette-num-btn--green { background: #198754; }
+.roulette-num-btn:hover, .roulette-num-btn.selected {
+    transform: scale(1.12);
+    box-shadow: 0 0 6px rgba(13,110,253,0.5);
+    border-color: #0d6efd;
+    z-index: 1;
+}
+</style>
+<script>
+var betLabels = {
+    'RedBlack|Red':   { label: '🔴 Roșu',            prob: '48.6% · plată 1:1' },
+    'RedBlack|Black': { label: '⚫ Negru',             prob: '48.6% · plată 1:1' },
+    'OddEven|Odd':    { label: 'Impar',               prob: '48.6% · plată 1:1' },
+    'OddEven|Even':   { label: 'Par',                 prob: '48.6% · plată 1:1' },
+    'LowHigh|Low':    { label: '1–18',                prob: '48.6% · plată 1:1' },
+    'LowHigh|High':   { label: '19–36',               prob: '48.6% · plată 1:1' },
+    'Dozen|1':        { label: '1–12',                prob: '33.3% · plată 2:1' },
+    'Dozen|2':        { label: '13–24',               prob: '33.3% · plată 2:1' },
+    'Dozen|3':        { label: '25–36',               prob: '33.3% · plată 2:1' },
+    'Column|1':       { label: 'Coloana 1',           prob: '33.3% · plată 2:1' },
+    'Column|2':       { label: 'Coloana 2',           prob: '33.3% · plată 2:1' },
+    'Column|3':       { label: 'Coloana 3',           prob: '33.3% · plată 2:1' },
+};
+
+function selectBet(btn) {
+    document.querySelectorAll('.roulette-bet-btn, .roulette-num-btn').forEach(function(b) {
+        b.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+
+    var type  = btn.dataset.type;
+    var value = btn.dataset.value;
+    var key   = type + '|' + value;
+    var info  = betLabels[key] || { label: 'Număr ' + value, prob: '2.7% · plată 35:1' };
+
+    document.getElementById('hidden-bet-type').value  = type;
+    document.getElementById('hidden-bet-value').value = value;
+    document.getElementById('summary-label').textContent = info.label;
+    document.getElementById('summary-prob').textContent  = info.prob;
+    document.getElementById('bet-summary').style.display = 'block';
+    document.getElementById('no-bet-hint').style.display = 'none';
+    document.getElementById('stake-input').focus();
+}
+
+// Canvas roulette wheel
+(function() {
+    var canvas = document.getElementById('roulette-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var cx = canvas.width / 2, cy = canvas.height / 2;
+    var outerR = cx - 6;
+    var innerR = outerR * 0.30;
+
+    var wheelOrder = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+    var redSet = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    var lastNum = @lastNumber;
+    var sliceAngle = (2 * Math.PI) / 37;
+
+    var winIdx = wheelOrder.indexOf(lastNum);
+    var startOffset = (lastNum >= 0 && winIdx >= 0)
+        ? -Math.PI / 2 - winIdx * sliceAngle - sliceAngle / 2
+        : -Math.PI / 2;
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR + 5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#e9ecef';
+    ctx.fill();
+
+    wheelOrder.forEach(function(num, i) {
+        var sa = startOffset + i * sliceAngle;
+        var ea = sa + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, outerR, sa, ea);
+        ctx.closePath();
+
+        if (num === lastNum && lastNum >= 0) {
+            ctx.fillStyle = '#0d6efd';
+        } else if (num === 0) {
+            ctx.fillStyle = '#198754';
+        } else if (redSet.has(num)) {
+            ctx.fillStyle = '#dc3545';
+        } else {
+            ctx.fillStyle = '#212529';
+        }
+        ctx.fill();
+        ctx.strokeStyle = '#adb5bd';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+
+        // Number label
+        var midAngle = sa + sliceAngle / 2;
+        var textR = outerR * 0.72;
+        var tx = cx + textR * Math.cos(midAngle);
+        var ty = cy + textR * Math.sin(midAngle);
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(midAngle + Math.PI / 2);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num.toString(), 0, 0);
+        ctx.restore();
+    });
+
+    // Outer border
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#6c757d';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Inner hub
+    var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR);
+    grad.addColorStop(0, '#f8f9fa');
+    grad.addColorStop(1, '#dee2e6');
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerR, 0, 2 * Math.PI);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = '#adb5bd';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Center number
+    if (lastNum >= 0) {
+        ctx.fillStyle = lastNum === 0 ? '#198754' :
+                        redSet.has(lastNum) ? '#dc3545' : '#212529';
+        ctx.font = 'bold ' + (lastNum >= 10 ? '20' : '24') + 'px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(lastNum.toString(), cx, cy);
+    } else {
+        ctx.fillStyle = '#adb5bd';
+        ctx.font = 'bold 24px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('?', cx, cy);
+    }
+})();
+</script>
+}

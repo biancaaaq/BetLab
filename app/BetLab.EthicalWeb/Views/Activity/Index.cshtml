@@ -1,0 +1,171 @@
+﻿@model BetLab.EthicalWeb.Models.MyActivityPageViewModel
+
+@{
+    ViewData["Title"] = "Activitate";
+
+    var totalStaked = Model.Bets.Sum(b => b.Stake);
+    var totalCasino = Model.Transactions
+        .Where(t => t.Type == "CasinoSpinPlaced")
+        .Sum(t => t.Amount);
+    var totalDeposited = Model.Transactions
+        .Where(t => t.Type == "TopUp" || t.Type == "DemoTopUp" || t.Type == "ResetDemo")
+        .Sum(t => t.Amount);
+}
+
+<div class="eth-page-header mb-4">
+    <div>
+        <h1 class="eth-page-title">Activitate</h1>
+        <p class="eth-page-subtitle">Istoricul complet al pariurilor și tranzacțiilor tale</p>
+    </div>
+</div>
+
+<!-- Sumar sold + statistici -->
+<div class="row g-3 mb-4">
+    @if (Model.Wallet != null)
+    {
+        <div class="col-sm-3">
+            <div class="eth-panel">
+                <div class="eth-panel-body text-center">
+                    <div class="stat-value">@Model.Wallet.Balance.ToString("F2") RON</div>
+                    <div class="stat-label">Sold curent</div>
+                </div>
+            </div>
+        </div>
+    }
+    <div class="col-sm-3">
+        <div class="eth-panel">
+            <div class="eth-panel-body text-center">
+                <div class="stat-value">@Model.Bets.Count</div>
+                <div class="stat-label">Pariuri plasate</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="eth-panel">
+            <div class="eth-panel-body text-center">
+                <div class="stat-value">@totalStaked.ToString("F2") RON</div>
+                <div class="stat-label">Total mizat pariuri</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="eth-panel">
+            <div class="eth-panel-body text-center">
+                <div class="stat-value">@totalCasino.ToString("F2") RON</div>
+                <div class="stat-label">Total mizat cazinou</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pariuri sportive -->
+<div class="eth-panel mb-4">
+    <div class="eth-panel-header">
+        <i data-lucide="trending-up"></i> Istoric pariuri sportive
+    </div>
+    <div class="eth-panel-body p-0">
+        @if (!Model.Bets.Any())
+        {
+            <div class="p-4 text-center text-muted">Nu există pariuri plasate încă.</div>
+        }
+        else
+        {
+            @foreach (var bet in Model.Bets)
+            {
+                var statusClass = bet.Status switch
+                {
+                    "Won"    => "eth-chip eth-chip-green",
+                    "Lost"   => "eth-chip eth-chip-gray",
+                    "Void"   => "eth-chip eth-chip-orange",
+                    _        => "eth-chip eth-chip-blue"
+                };
+                var statusLabel = bet.Status switch
+                {
+                    "Won"     => "Câștigat",
+                    "Lost"    => "Pierdut",
+                    "Void"    => "Anulat",
+                    "Pending" => "În așteptare",
+                    _         => bet.Status
+                };
+                <div class="activity-bet-row">
+                    <div class="activity-bet-header">
+                        <div class="activity-bet-meta">
+                            <span class="activity-bet-id">Bilet #@bet.BetSlipId</span>
+                            <span class="eth-chip @(bet.Type == "Acumulator" ? "eth-chip-blue" : "eth-chip-gray") ms-2">@bet.Type</span>
+                        </div>
+                        <span class="@statusClass">@statusLabel</span>
+                    </div>
+                    <div class="activity-bet-selections">
+                        @foreach (var sel in bet.Selections)
+                        {
+                            <div class="activity-selection">
+                                <span class="activity-selection-event">@sel.EventName</span>
+                                <span class="activity-selection-outcome">@sel.OutcomeName</span>
+                                <span class="betslip-row-odds">@sel.Odds</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="activity-bet-footer">
+                        <span class="text-muted text-sm">Miză: <strong>@bet.Stake.ToString("F2") RON</strong></span>
+                        <span class="text-muted text-sm">Cotă totală: <strong>@bet.TotalOdds</strong></span>
+                        <span class="text-muted text-sm">Câștig potențial: <strong>@bet.PotentialPayout.ToString("F2") RON</strong></span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<!-- Tranzacții wallet -->
+<div class="eth-panel">
+    <div class="eth-panel-header">
+        <i data-lucide="credit-card"></i> Tranzacții
+    </div>
+    <div class="eth-panel-body p-0">
+        @if (!Model.Transactions.Any())
+        {
+            <div class="p-4 text-center text-muted">Nu există tranzacții încă.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="eth-table">
+                    <thead>
+                        <tr>
+                            <th>Tip</th>
+                            <th>Sumă</th>
+                            <th>Înainte</th>
+                            <th>După</th>
+                            <th>Descriere</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var tx in Model.Transactions)
+                        {
+                            var txLabel = tx.Type switch
+                            {
+                                "TopUp" or "DemoTopUp" or "ResetDemo" => ("Depunere", "eth-chip-green"),
+                                "BetPlaced"           => ("Pariu plasat", "eth-chip-gray"),
+                                "BetWon"              => ("Pariu câștigat", "eth-chip-green"),
+                                "CasinoSpinPlaced"    => ("Rotire cazinou", "eth-chip-gray"),
+                                "CasinoWin"           => ("Câștig cazinou", "eth-chip-green"),
+                                _                     => (tx.Type, "eth-chip-blue")
+                            };
+                            <tr>
+                                <td><span class="eth-chip @txLabel.Item2">@txLabel.Item1</span></td>
+                                <td class="@(tx.Amount > 0 ? "text-success fw-semibold" : "")">
+                                    @tx.Amount.ToString("F2") RON
+                                </td>
+                                <td class="text-muted text-sm">@tx.BalanceBefore.ToString("F2") RON</td>
+                                <td class="text-muted text-sm">@tx.BalanceAfter.ToString("F2") RON</td>
+                                <td class="text-muted text-sm">@tx.Description</td>
+                                <td class="text-muted text-sm">@tx.CreatedAt.ToRomanianTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

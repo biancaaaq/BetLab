@@ -1,0 +1,95 @@
+﻿@model BetLab.EthicalWeb.Models.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Cont nou";
+}
+
+<div class="auth-card">
+    <div class="text-center mb-4">
+        <div class="eth-brand-mark mx-auto mb-3" style="width: 48px; height: 48px; border-radius: 14px;">
+            <i data-lucide="user-plus" style="width: 26px; height: 26px;"></i>
+        </div>
+        <h1 class="auth-title">Cont nou</h1>
+        <p class="auth-subtitle">Creează-ți contul gratuit</p>
+    </div>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="alert alert-danger mb-3">
+            <i data-lucide="alert-circle"></i>
+            <div>@ViewBag.Error</div>
+        </div>
+    }
+
+    <form method="post">
+        <div class="mb-3">
+            <label asp-for="UserName" class="form-label">Nume utilizator</label>
+            <input asp-for="UserName"
+                   class="form-control"
+                   type="text"
+                   autocomplete="username"
+                   placeholder="ex. andrei2026"
+                   required />
+            <div class="form-text">Așa o să te vedem în profil și în istoric.</div>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label">Email</label>
+            <input asp-for="Email"
+                   class="form-control"
+                   type="email"
+                   autocomplete="email"
+                   placeholder="adresa@exemplu.ro"
+                   required />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label">Parolă</label>
+            <input asp-for="Password"
+                   class="form-control"
+                   type="password"
+                   autocomplete="new-password"
+                   placeholder="minim 6 caractere"
+                   minlength="6"
+                   required />
+            <div class="form-text">Pentru siguranța contului tău, folosește o parolă unică.</div>
+        </div>
+
+        
+        <div class="mb-4">
+            <label asp-for="Cnp" class="form-label">
+                <i data-lucide="shield-check" style="width:14px;height:14px;color:var(--primary);vertical-align:-2px;"></i>
+                Cod Numeric Personal (CNP)
+            </label>
+            <input asp-for="Cnp"
+                   class="form-control"
+                   type="text"
+                   inputmode="numeric"
+                   maxlength="13"
+                   pattern="\d{13}"
+                   placeholder="13 cifre"
+                   autocomplete="off"
+                   required />
+            <div class="form-text">
+                CNP-ul tău este verificat față de
+                <strong>Registrul Național de Autoexcludere</strong> (simulare ONJN, conform legislației
+                românești privind jocurile de noroc). Nu este stocat în alt scop și nu este partajat cu terți.
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 justify-content-center btn-lg">
+            <i data-lucide="user-plus"></i>
+            <span>Creează cont</span>
+        </button>
+
+        <p class="form-text text-center mt-3 mb-0">
+            Prin crearea contului confirm că am cel puțin 18 ani și sunt de acord cu
+            <a asp-controller="Home" asp-action="Privacy">politica de confidențialitate</a>.
+        </p>
+    </form>
+
+    <div class="auth-footer">
+        Ai deja cont?
+        <a asp-action="Login">Autentifică-te</a>
+    </div>
+</div>

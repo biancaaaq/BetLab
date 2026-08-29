@@ -1,0 +1,1006 @@
+﻿@model BetLab.DarkWeb.Models.EventDetailsPageViewModel
+@using BetLab.DarkWeb.Models
+@using BetLab.DarkWeb.Services
+@{
+    var ev         = Model.Event;
+    ViewData["Title"] = $"{ev.HomeTeam} vs {ev.AwayTeam}";
+    var rand       = new Random();
+    var analytics  = Model.Analytics;
+    var popularity = Model.Popularity;
+
+    // Grupare markets în categorii (Superbet style)
+    var groups = new[]
+    {
+        ("Principale",   new[] { "1X2", "DoubleChance", "BTTS" }),
+        ("Goluri",       new[] { "OU_0_5", "OU_1_5", "OU_2_5", "OU_3_5", "OU_4_5" }),
+        ("Combo",        new[] { "HtFt" }),
+        ("Scor exact",   new[] { "CorrectScore" }),
+    };
+
+    // Dictionary pentru lookup popularitate per outcome
+    var popMap = popularity?.Outcomes?.ToDictionary(p => p.OutcomeId, p => p.Percentage)
+                 ?? new Dictionary<int, double>();
+
+    // Bilet curent (din sesiune)
+    var slipItems = Context.Session.GetObject<List<BetSlipItemViewModel>>("Dark_BetSlip") ?? new();
+    decimal totalOdds = slipItems.Any()
+        ? decimal.Round(slipItems.Select(x => x.Odds).Aggregate(1m, (a, b) => a * b), 2, MidpointRounding.AwayFromZero)
+        : 0m;
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="dark-alert dark-alert-danger mb-3">⚠️ @TempData["Error"]</div>
+}
+
+<!-- Header meci-->
+<div class="match-header">
+    <a asp-controller="Events" asp-action="Index"
+       style="font-size:0.8rem;color:var(--text-muted);text-decoration:none;">← Înapoi la meciuri</a>
+
+    <div class="match-header__main">
+        <div class="match-team match-team--home">
+            <div class="match-team__name">@ev.HomeTeam</div>
+            <div class="match-team__label">ACASĂ</div>
+        </div>
+
+        <div class="match-vs">
+            @if (ev.IsLive)
+            {
+                <div class="match-live-score">
+                    <span class="match-live-score__home">@(ev.HomeScore ?? 0)</span>
+                    <span class="match-live-score__sep">–</span>
+                    <span class="match-live-score__away">@(ev.AwayScore ?? 0)</span>
+                </div>
+                <div class="match-live-minute"
+                     data-start="@ev.StartTimeUtc.ToString("o")">
+                    <span class="match-live-dot"></span>
+                    <span class="match-live-minute__txt">--'</span>
+                </div>
+                <span class="dark-chip dark-chip-red" style="margin-top:0.4rem;">🔴 LIVE</span>
+            }
+            else if (ev.Status == "Finished" && (ev.HomeScore.HasValue || ev.AwayScore.HasValue))
+            {
+                <div class="match-live-score" style="opacity:0.85;">
+                    <span class="match-live-score__home">@(ev.HomeScore ?? 0)</span>
+                    <span class="match-live-score__sep">–</span>
+                    <span class="match-live-score__away">@(ev.AwayScore ?? 0)</span>
+                </div>
+                <div class="match-vs__time" style="margin-top:0.3rem;">@ev.StartTimeUtc.ToRomanianTime().ToString("dd MMM")</div>
+                <span class="dark-chip dark-chip-gray">Final</span>
+            }
+            else
+            {
+                <div class="match-vs__time">@ev.StartTimeUtc.ToRomanianTime().ToString("dd MMM")</div>
+                <div class="match-vs__hour">@ev.StartTimeUtc.ToRomanianTime().ToString("HH:mm")</div>
+                <div class="match-vs__divider">VS</div>
+                <span class="dark-chip dark-chip-gray">@ev.Status</span>
+            }
+        </div>
+
+        <div class="match-team match-team--away">
+            <div class="match-team__name">@ev.AwayTeam</div>
+            <div class="match-team__label">DEPLASARE</div>
+        </div>
+    </div>
+
+    <div class="match-header__meta">
+        <span class="dark-chip dark-chip-gray">@ev.SportName · @ev.CompetitionName</span>
+        <span style="font-size:0.78rem;color:#DC2626;font-weight:700;">
+            👁 <span id="viewer-count">@(rand.Next(180, 520))</span> utilizatori văd această pagină
+        </span>
+        <span style="font-size:0.78rem;color:var(--gold);font-weight:700;">
+            📊 @ev.Markets.Count piețe disponibile
+        </span>
+    </div>
+</div>
+
+<!-- Grid: conținut stânga | bilet dreapta  -->
+<div style="display:grid;grid-template-columns:1fr 340px;gap:1rem;align-items:start;">
+<div>
+
+<!-- Urgency bar  -->
+<div class="dark-urgency-bar mb-3">
+    ⚡ Cotele se pot modifica în orice moment! Plasează pariul înainte să fie prea târziu —
+    <span class="timer" id="match-timer">04:59</span>
+</div>
+
+<!-- Tab-uri -->
+<div class="match-tabs">
+    <button class="match-tab match-tab--active" data-tab="odds">📊 Cote</button>
+    <button class="match-tab" data-tab="stats">📈 Statistici</button>
+    <button class="match-tab" data-tab="h2h">⚔️ H2H</button>
+</div>
+
+
+<!-- TAB 1: COTE — toate piețele grupate                              -->
+
+<div class="tab-panel tab-panel--active" data-panel="odds">
+    @foreach (var (groupTitle, groupTypes) in groups)
+    {
+        var groupMarkets = ev.Markets
+            .Where(m => groupTypes.Contains(m.MarketType))
+            .OrderBy(m => Array.IndexOf(groupTypes, m.MarketType))
+            .ToList();
+
+        if (!groupMarkets.Any()) continue;
+
+        <div class="market-group">
+            <div class="market-group__title">@groupTitle</div>
+
+            @foreach (var market in groupMarkets)
+            {
+                var nCols = market.MarketType switch
+                {
+                    "CorrectScore" => 5,
+                    "HtFt"         => 3,
+                    "BTTS"         => 2,
+                    var s when s.StartsWith("OU_") => 2,
+                    "DoubleChance" => 3,
+                    "1X2"          => 3,
+                    _              => 3
+                };
+
+                <div class="market-card">
+                    <div class="market-card__head">
+                        <span class="market-card__name">@market.Name</span>
+                        @if (market.IsMain)
+                        { <span class="dark-chip dark-chip-red" style="font-size:0.65rem;">PRINCIPAL</span> }
+                    </div>
+
+                    <div class="market-card__grid" style="grid-template-columns:repeat(@nCols, 1fr);">
+                        @foreach (var outcome in market.Outcomes)
+                        {
+                            var inSlip = slipItems.Any(s => s.OutcomeId == outcome.OutcomeId);
+                            var popPct = popMap.GetValueOrDefault(outcome.OutcomeId, 0);
+
+                            <form asp-controller="BetSlip" asp-action="Add" method="post" style="margin:0;">
+                                <input type="hidden" name="outcomeId"   value="@outcome.OutcomeId" />
+                                <input type="hidden" name="eventId"     value="@ev.EventId" />
+                                <input type="hidden" name="eventName"   value="@($"{ev.HomeTeam} vs {ev.AwayTeam}")" />
+                                <input type="hidden" name="marketId"    value="@market.MarketId" />
+                                <input type="hidden" name="marketName"  value="@market.Name" />
+                                <input type="hidden" name="outcomeName" value="@outcome.Name" />
+                                <input type="hidden" name="odds"        value="@outcome.Odds" />
+                                <input type="hidden" name="marketType"  value="@market.MarketType" />
+                                <input type="hidden" name="outcomeCode" value="@outcome.Code" />
+                                <input type="hidden" name="ret"         value="Details" />
+                                <input type="hidden" name="returnId"    value="@ev.EventId" />
+                                <button type="submit"
+                                        class="odd-pill @(inSlip ? "odd-pill--selected" : "")">
+                                    <span class="odd-pill__label">@outcome.Name</span>
+                                    <span class="odd-pill__value">@outcome.Odds.ToString("F2")</span>
+                                    @if (popPct >= 1)
+                                    {
+                                        <span class="odd-pill__pop">@popPct.ToString("F0")%</span>
+                                    }
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @{
+        // Markets necunoscute / restante
+        var knownTypes = groups.SelectMany(g => g.Item2).ToHashSet();
+        var otherMarkets = ev.Markets.Where(m => !knownTypes.Contains(m.MarketType)).ToList();
+    }
+    @if (otherMarkets.Any())
+    {
+        <div class="market-group">
+            <div class="market-group__title">Alte piețe</div>
+            @foreach (var market in otherMarkets)
+            {
+                <div class="market-card">
+                    <div class="market-card__head">
+                        <span class="market-card__name">@market.Name</span>
+                    </div>
+                    <div class="market-card__grid" style="grid-template-columns:repeat(@Math.Min(market.Outcomes.Count, 3), 1fr);">
+                        @foreach (var outcome in market.Outcomes)
+                        {
+                            var inSlip = slipItems.Any(s => s.OutcomeId == outcome.OutcomeId);
+                            <form asp-controller="BetSlip" asp-action="Add" method="post" style="margin:0;">
+                                <input type="hidden" name="outcomeId"   value="@outcome.OutcomeId" />
+                                <input type="hidden" name="eventId"     value="@ev.EventId" />
+                                <input type="hidden" name="eventName"   value="@($"{ev.HomeTeam} vs {ev.AwayTeam}")" />
+                                <input type="hidden" name="marketId"    value="@market.MarketId" />
+                                <input type="hidden" name="marketName"  value="@market.Name" />
+                                <input type="hidden" name="outcomeName" value="@outcome.Name" />
+                                <input type="hidden" name="odds"        value="@outcome.Odds" />
+                                <input type="hidden" name="marketType"  value="@market.MarketType" />
+                                <input type="hidden" name="outcomeCode" value="@outcome.Code" />
+                                <input type="hidden" name="ret"         value="Details" />
+                                <input type="hidden" name="returnId"    value="@ev.EventId" />
+                                <button type="submit" class="odd-pill @(inSlip ? "odd-pill--selected" : "")">
+                                    <span class="odd-pill__label">@outcome.Name</span>
+                                    <span class="odd-pill__value">@outcome.Odds.ToString("F2")</span>
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+
+<!-- TAB 2: STATISTICI — forma celor 2 echipe                          -->
+
+<div class="tab-panel" data-panel="stats">
+    @if (analytics == null || !analytics.HasRealData)
+    {
+        <div class="dark-panel">
+            <div class="dark-panel-body" style="padding:2rem;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:0.5rem;">📊</div>
+                <h6 style="color:#fff;margin-bottom:0.5rem;">Statistici nedisponibile</h6>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin:0;">
+                    @(analytics?.Message ?? "Eveniment local — fără date de la API.")
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="stats-grid">
+            @{
+                async Task RenderForm(string label, string teamName, List<FormItemViewModel> form)
+                {
+                    <div class="stats-card">
+                        <div class="stats-card__title">@label · <span style="color:#fff;">@teamName</span></div>
+
+                        @if (!form.Any())
+                        {
+                            <p style="color:var(--text-muted);font-size:0.82rem;margin:0;">Nu sunt date de formă recentă.</p>
+                        }
+                        else
+                        {
+                            int wins = form.Count(f => f.Result == "W");
+                            int draws = form.Count(f => f.Result == "D");
+                            int losses = form.Count(f => f.Result == "L");
+                            int gf = form.Sum(f => f.GoalsFor);
+                            int ga = form.Sum(f => f.GoalsAgainst);
+
+                            <div class="stats-summary">
+                                <div class="stat-box stat-box--win">
+                                    <div class="stat-box__value">@wins</div><div class="stat-box__label">V</div>
+                                </div>
+                                <div class="stat-box stat-box--draw">
+                                    <div class="stat-box__value">@draws</div><div class="stat-box__label">E</div>
+                                </div>
+                                <div class="stat-box stat-box--loss">
+                                    <div class="stat-box__value">@losses</div><div class="stat-box__label">Î</div>
+                                </div>
+                                <div class="stat-box stat-box--goals">
+                                    <div class="stat-box__value">@gf:@ga</div><div class="stat-box__label">G</div>
+                                </div>
+                            </div>
+
+                            <div class="form-badges">
+                                @foreach (var f in form.OrderBy(f => f.DateUtc))
+                                {
+                                    var cls = f.Result switch { "W" => "win", "D" => "draw", _ => "loss" };
+                                    var titleAttr = $"{f.DateUtc.ToRomanianTime():dd MMM} · {(f.WasHome ? "Acasă" : "Deplasare")} vs {f.Opponent} ({f.GoalsFor}-{f.GoalsAgainst})";
+                                    <span class="form-badge form-badge--@cls" title="@titleAttr">@f.Result</span>
+                                }
+                            </div>
+
+                            <div class="form-list">
+                                @foreach (var f in form.OrderByDescending(f => f.DateUtc))
+                                {
+                                    var cls = f.Result switch { "W" => "win", "D" => "draw", _ => "loss" };
+                                    <div class="form-row form-row--@cls">
+                                        <span class="form-row__date">@f.DateUtc.ToRomanianTime().ToString("dd MMM")</span>
+                                        <span class="form-row__opp">@(f.WasHome ? "vs" : "@") @f.Opponent</span>
+                                        <span class="form-row__score">@f.GoalsFor - @f.GoalsAgainst</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            @{ await RenderForm("🏠 FORMA ECHIPEI ACASĂ", analytics.HomeTeamName, analytics.HomeForm); }
+            @{ await RenderForm("✈️ FORMA ECHIPEI DEPLASARE", analytics.AwayTeamName, analytics.AwayForm); }
+        </div>
+    }
+</div>
+
+
+<!-- TAB 3: H2H — confruntări directe                                  -->
+
+<div class="tab-panel" data-panel="h2h">
+    @if (analytics == null || !analytics.HasRealData || analytics.H2H.NumMatches == 0)
+    {
+        <div class="dark-panel">
+            <div class="dark-panel-body" style="padding:2rem;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:0.5rem;">⚔️</div>
+                <h6 style="color:#fff;margin-bottom:0.5rem;">Nu există date H2H</h6>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin:0;">
+                    @(analytics?.Message ?? "Echipele nu s-au mai întâlnit recent în baza de date a API-ului.")
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        var h = analytics.H2H;
+        int total = Math.Max(1, h.NumMatches);
+        double pctHome  = (double)h.HomeWins  / total * 100;
+        double pctDraw  = (double)h.HomeDraws / total * 100;
+        double pctAway  = (double)h.AwayWins  / total * 100;
+
+        <div class="dark-panel">
+            <div class="dark-panel-header">⚔️ ULTIMELE @h.NumMatches CONFRUNTĂRI DIRECTE</div>
+            <div class="dark-panel-body">
+                <div class="h2h-totals">
+                    <div class="h2h-totals__col">
+                        <div class="h2h-totals__num h2h-totals__num--home">@h.HomeWins</div>
+                        <div class="h2h-totals__label">Victorii @analytics.HomeTeamName</div>
+                    </div>
+                    <div class="h2h-totals__col">
+                        <div class="h2h-totals__num h2h-totals__num--draw">@h.HomeDraws</div>
+                        <div class="h2h-totals__label">Egaluri</div>
+                    </div>
+                    <div class="h2h-totals__col">
+                        <div class="h2h-totals__num h2h-totals__num--away">@h.AwayWins</div>
+                        <div class="h2h-totals__label">Victorii @analytics.AwayTeamName</div>
+                    </div>
+                </div>
+
+                <div class="h2h-bar">
+                    <div class="h2h-bar__seg h2h-bar__seg--home" style="width:@(pctHome.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+                        @if (pctHome > 8) { <span>@pctHome.ToString("F0")%</span> }
+                    </div>
+                    <div class="h2h-bar__seg h2h-bar__seg--draw" style="width:@(pctDraw.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+                        @if (pctDraw > 8) { <span>@pctDraw.ToString("F0")%</span> }
+                    </div>
+                    <div class="h2h-bar__seg h2h-bar__seg--away" style="width:@(pctAway.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+                        @if (pctAway > 8) { <span>@pctAway.ToString("F0")%</span> }
+                    </div>
+                </div>
+
+                <div style="margin-top:1rem;font-size:0.82rem;color:var(--text-muted);">
+                    Total goluri marcate: <strong style="color:var(--gold);">@h.TotalGoals</strong>
+                    @if (h.NumMatches > 0)
+                    {
+                        <span> · Medie: <strong style="color:#fff;">@((h.TotalGoals / (double)h.NumMatches).ToString("F2"))</strong> per meci</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (analytics.RecentMatches.Any())
+        {
+            <div class="dark-panel mt-3">
+                <div class="dark-panel-header">📜 Istoric meciuri</div>
+                <div class="dark-panel-body" style="padding:0;">
+                    <table class="h2h-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Acasă</th>
+                                <th>Scor</th>
+                                <th>Deplasare</th>
+                                <th>Competiție</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var m in analytics.RecentMatches)
+                            {
+                                <tr>
+                                    <td>@m.DateUtc.ToRomanianTime().ToString("dd MMM yy")</td>
+                                    <td class="@(m.HomeScore > m.AwayScore ? "win" : "")">@m.HomeTeam</td>
+                                    <td class="h2h-table__score">@m.HomeScore - @m.AwayScore</td>
+                                    <td class="@(m.AwayScore > m.HomeScore ? "win" : "")">@m.AwayTeam</td>
+                                    <td style="color:var(--text-dim);font-size:0.75rem;">@m.Competition</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+</div><!-- / stânga -->
+
+<!-- Dreapta: bilet stick-->
+<div style="position:sticky;top:90px;">
+    <div class="dark-panel slip-card">
+        <div class="dark-panel-header dark-panel-header--red">
+            🎯 Biletul meu
+            <span class="dark-chip dark-chip-@(slipItems.Any() ? "red" : "gray") ms-auto"
+                  style="font-size:0.72rem;font-weight:700;">
+                @slipItems.Count selecții
+            </span>
+        </div>
+
+        @if (!slipItems.Any())
+        {
+            <div style="padding:2.5rem 1rem;text-align:center;color:var(--text-muted);">
+                <div style="font-size:2.5rem;margin-bottom:0.75rem;">🎯</div>
+                <p style="font-size:0.85rem;margin:0;line-height:1.6;">
+                    Apasă pe o cotă<br/>pentru a adăuga în bilet.
+                </p>
+            </div>
+        }
+        else
+        {
+            <!-- Selecții -->
+            <div style="max-height:320px;overflow-y:auto;">
+                @foreach (var s in slipItems)
+                {
+                    <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);
+                                display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+                        <div style="min-width:0;flex:1;">
+                            <div style="font-size:0.8rem;font-weight:700;color:white;
+                                        margin-bottom:0.15rem;white-space:nowrap;
+                                        overflow:hidden;text-overflow:ellipsis;">
+                                @s.EventName
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-dim);">
+                                @s.MarketName · @s.OutcomeName
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+                            <span style="font-weight:800;color:var(--gold);font-size:0.95rem;">
+                                @s.Odds.ToString("F2")
+                            </span>
+                            <form asp-controller="BetSlip" asp-action="Remove" method="post" style="margin:0;">
+                                <input type="hidden" name="outcomeId" value="@s.OutcomeId" />
+                                <input type="hidden" name="ret" value="Events" />
+                                <button type="submit"
+                                        style="background:none;border:none;color:#6B7280;
+                                               cursor:pointer;font-size:0.95rem;padding:0;line-height:1;"
+                                        onmouseover="this.style.color='var(--primary)'"
+                                        onmouseout="this.style.color='#6B7280'">✕</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Cotă totală -->
+            <div style="padding:0.65rem 1rem;border-bottom:1px solid var(--border);
+                        display:flex;justify-content:space-between;font-size:0.85rem;">
+                <span style="color:var(--text-muted);">Cotă totală</span>
+                <span style="font-weight:800;color:var(--gold);font-size:1rem;">
+                    @totalOdds.ToString("F2")
+                </span>
+            </div>
+
+            <!-- Form plasare -->
+            <div style="padding:0.85rem 1rem;">
+                <form asp-controller="BetSlip" asp-action="Place" method="post">
+                    <input type="hidden" name="ret" value="Events" />
+                    <div style="margin-bottom:0.65rem;">
+                        <label style="font-size:0.75rem;color:var(--text-muted);
+                                      display:block;margin-bottom:0.3rem;">Miză (RON)</label>
+                        <input type="number" name="stake" id="sidebar-stake"
+                               min="1" max="10000" step="0.50" value="50" required
+                               oninput="updateSidebarPayout()"
+                               class="form-control-dark" style="font-size:1rem;font-weight:700;" />
+                    </div>
+                    <div style="display:flex;justify-content:space-between;
+                                align-items:center;margin-bottom:0.8rem;">
+                        <span style="font-size:0.78rem;color:var(--text-muted);">Câștig potențial</span>
+                        <span id="sidebar-payout"
+                              style="font-size:1.2rem;font-weight:900;color:#34D399;">—</span>
+                    </div>
+                    <button type="submit" class="btn-dark-primary pulse w-100"
+                            style="font-size:0.95rem;padding:0.75rem;font-weight:800;">
+                        🎯 PARIAZĂ ACUM!
+                    </button>
+                </form>
+                <form asp-controller="BetSlip" asp-action="Clear" method="post" style="margin-top:0.5rem;">
+                    <input type="hidden" name="ret" value="Events" />
+                    <button type="submit"
+                            style="background:none;border:none;color:var(--text-dim);
+                                   font-size:0.75rem;cursor:pointer;
+                                   width:100%;text-align:center;padding:0.3rem;">
+                        Golește biletul
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+</div><!-- / grid -->
+
+@section Scripts {
+<style>
+/* Header meci  */
+.match-header {
+    background: linear-gradient(135deg, #0F0F0F 0%, #1a0a0a 100%);
+    border: 1px solid #2A2A2A;
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 0.75rem;
+}
+.match-header__main {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    align-items: center;
+    margin: 1rem 0 0.5rem;
+}
+.match-team {
+    text-align: center;
+}
+.match-team--home { text-align: right; }
+.match-team--away { text-align: left; }
+.match-team__name {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.1;
+}
+.match-team__label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-top: 0.2rem;
+}
+.match-vs {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 140px;
+}
+.match-vs__time { font-size: 0.8rem; color: var(--text-muted); }
+.match-vs__hour {
+    font-size: 1.4rem; font-weight: 900;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.match-vs__divider {
+    font-size: 0.7rem; color: var(--primary); font-weight: 800; letter-spacing: 0.2em;
+}
+
+/* Scor live */
+.match-live-score {
+    display: flex; align-items: baseline; gap: 0.5rem;
+    font-size: 2.5rem; font-weight: 900; line-height: 1;
+    color: white;
+    text-shadow: 0 0 12px rgba(239,68,68,0.5);
+    margin-bottom: 0.3rem;
+}
+.match-live-score__sep {
+    font-size: 1.8rem; color: var(--text-muted); font-weight: 600;
+}
+.match-live-minute {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: rgba(220,38,38,0.15);
+    border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #FCA5A5;
+    margin-bottom: 0.4rem;
+}
+.match-live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #EF4444;
+    box-shadow: 0 0 8px rgba(239,68,68,0.8);
+    animation: blink 1.2s infinite;
+}
+.match-header__meta {
+    display: flex; flex-wrap: wrap;
+    align-items: center; gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #2A2A2A;
+}
+
+/*Tab-uri */
+.match-tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.match-tab {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.match-tab:hover { border-color: var(--primary); color: #fff; }
+.match-tab--active {
+    background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+    border-color: var(--primary-bright);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+}
+.tab-panel { display: none; }
+.tab-panel--active { display: block; animation: fadeIn 0.2s; }
+@@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/*Markets grouping */
+.market-group { margin-bottom: 1.25rem; }
+.market-group__title {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    text-transform: uppercase;
+    padding: 0.5rem 0.2rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #2A2A2A;
+}
+.market-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.6rem;
+}
+.market-card__head {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+.market-card__name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #fff;
+}
+.market-card__grid {
+    display: grid;
+    gap: 0.4rem;
+}
+
+/* Odd pill (compact button for each outcome) */
+.odd-pill {
+    width: 100%;
+    background: linear-gradient(135deg, #1e1200, #1a1a1a);
+    border: 1px solid rgba(245,158,11,0.35);
+    color: #fff;
+    padding: 0.55rem 0.4rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    transition: all 0.15s;
+    position: relative;
+    min-height: 60px;
+    justify-content: center;
+}
+.odd-pill:hover {
+    border-color: var(--gold);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.25);
+}
+.odd-pill--selected {
+    background: linear-gradient(135deg, #2a1500, #1a1a1a);
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(245,158,11,0.4);
+}
+.odd-pill__label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.1;
+    text-align: center;
+}
+.odd-pill__value {
+    font-size: 1.05rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+}
+.odd-pill__pop {
+    position: absolute;
+    top: 2px; right: 4px;
+    font-size: 0.6rem;
+    color: #DC2626;
+    font-weight: 800;
+}
+
+/* Stats tab */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+@@media (max-width: 900px) {
+    .stats-grid { grid-template-columns: 1fr; }
+}
+.stats-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+}
+.stats-card__title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+}
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+.stat-box {
+    background: #0F0F0F;
+    border: 1px solid #2A2A2A;
+    border-radius: 6px;
+    padding: 0.5rem;
+    text-align: center;
+}
+.stat-box__value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    line-height: 1;
+}
+.stat-box__label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+    letter-spacing: 0.05em;
+}
+.stat-box--win   .stat-box__value { color: #34D399; }
+.stat-box--draw  .stat-box__value { color: #FBBF24; }
+.stat-box--loss  .stat-box__value { color: #F87171; }
+.stat-box--goals .stat-box__value { color: #fff; font-size: 1.05rem; }
+
+.form-badges {
+    display: flex; gap: 0.3rem; margin-bottom: 0.85rem;
+}
+.form-badge {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 900; color: #fff;
+    cursor: help;
+}
+.form-badge--win  { background: #059669; }
+.form-badge--draw { background: #D97706; }
+.form-badge--loss { background: #DC2626; }
+
+.form-list { margin-top: 0.5rem; }
+.form-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 60px;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.78rem;
+    border-radius: 6px;
+    margin-bottom: 0.2rem;
+    background: #0F0F0F;
+    border-left: 3px solid #2A2A2A;
+}
+.form-row--win  { border-left-color: #34D399; }
+.form-row--draw { border-left-color: #FBBF24; }
+.form-row--loss { border-left-color: #F87171; }
+.form-row__date  { color: var(--text-muted); }
+.form-row__opp   { color: #fff; }
+.form-row__score { text-align: right; font-weight: 700; color: var(--gold); }
+
+/* H2H tab*/
+.h2h-totals {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.h2h-totals__col { text-align: center; }
+.h2h-totals__num {
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1;
+}
+.h2h-totals__num--home { color: #34D399; }
+.h2h-totals__num--draw { color: #FBBF24; }
+.h2h-totals__num--away { color: #F87171; }
+.h2h-totals__label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+}
+
+.h2h-bar {
+    display: flex;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #0F0F0F;
+}
+.h2h-bar__seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    transition: width 0.4s;
+}
+.h2h-bar__seg--home { background: linear-gradient(135deg, #059669, #047857); }
+.h2h-bar__seg--draw { background: linear-gradient(135deg, #D97706, #B45309); }
+.h2h-bar__seg--away { background: linear-gradient(135deg, #DC2626, #991B1B); }
+
+.h2h-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.h2h-table thead th {
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid #2A2A2A;
+}
+.h2h-table tbody td {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    border-bottom: 1px solid #1A1A1A;
+}
+.h2h-table tbody td.win { color: #34D399; font-weight: 700; }
+.h2h-table__score {
+    font-weight: 900;
+    color: var(--gold);
+    text-align: center;
+    font-family: ui-monospace, monospace;
+}
+
+</style>
+<style>
+/* Slip card — glow when selections exist */
+.slip-card { transition: box-shadow 0.2s; }
+@if (slipItems.Any())
+{
+    <text>
+    .slip-card {
+        border-color: rgba(220,38,38,0.4);
+        box-shadow: 0 0 20px rgba(220,38,38,0.12);
+    }
+    </text>
+}
+</style>
+<script>
+var sidebarOdds = @totalOdds.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+
+// Dark pattern: miza persistă via localStorage 
+var STAKE_KEY = 'dark_last_stake';
+(function () {
+    var input = document.getElementById('sidebar-stake');
+    if (!input) return;
+
+    // Restaurare miză salvată
+    var saved = parseFloat(localStorage.getItem(STAKE_KEY));
+    if (!isNaN(saved) && saved > 0) input.value = saved;
+
+    // Salvare la modificare + log StakeChanged
+    var stakeLogTimeout = null;
+    input.addEventListener('input', function () {
+        var v = parseFloat(this.value);
+        if (!isNaN(v) && v > 0) localStorage.setItem(STAKE_KEY, v);
+        clearTimeout(stakeLogTimeout);
+        var captured = v;
+        stakeLogTimeout = setTimeout(function () {
+            if (!isNaN(captured) && captured > 0 && typeof darkLog === 'function') {
+                darkLog('StakeChanged', 'EventDetails', {
+                    targetType: 'StakeInput', targetId: 'sidebar-stake',
+                    newValue: String(captured)
+                });
+            }
+        }, 800);
+    });
+})();
+
+function updateSidebarPayout() {
+    var stake  = parseFloat(document.getElementById('sidebar-stake')?.value) || 0;
+    var payout = stake * sidebarOdds;
+    var el     = document.getElementById('sidebar-payout');
+    if (el) el.textContent = payout > 0
+        ? payout.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' RON'
+        : '—';
+}
+updateSidebarPayout();
+
+// Tab switching
+(function () {
+    var tabs   = document.querySelectorAll('.match-tab');
+    var panels = document.querySelectorAll('.tab-panel');
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            var target = tab.dataset.tab;
+            tabs.forEach(function (t)   { t.classList.toggle('match-tab--active',   t === tab); });
+            panels.forEach(function (p) { p.classList.toggle('tab-panel--active',  p.dataset.panel === target); });
+        });
+    });
+})();
+
+// Viewer count fluctuating
+(function () {
+    var el = document.getElementById('viewer-count');
+    if (!el) return;
+    var base = parseInt(el.textContent, 10);
+    setInterval(function () {
+        base += Math.floor(Math.random() * 7) - 2;
+        if (base < 50) base = 55;
+        el.textContent = base;
+    }, 2800);
+})();
+
+// Match countdown
+(function () {
+    var secs = 299;
+    function update() {
+        var m = Math.floor(secs / 60), s = secs % 60;
+        var el = document.getElementById('match-timer');
+        if (el) el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        if (secs > 0) { secs--; setTimeout(update, 1000); }
+        else { secs = 299; setTimeout(update, 1000); }
+    }
+    update();
+})();
+
+// Live minute display — folosim minutul sincronizat din API-FOOTBALL (exact)
+// cu fallback la calculul din ceasul de perete dacă minutul nu e disponibil.
+(function () {
+    // Minutul sincronizat din DB (scris de SyncLiveFixturesAsync din API-FOOTBALL elapsed)
+    // Dacă e null/0 → fallback la calcul wall-clock
+    var syncedMinute = @(ev.IsLive && ev.CurrentMinute.HasValue ? ev.CurrentMinute.Value.ToString() : "null");
+    // Momentul când a fost sincronizat (ora page-load) — pentru interpolare
+    var syncedAt = Date.now();
+
+    function calcMinute(startIso) {
+        // Caz 1: avem minut sincronizat din API → interpolăm din momentul page-load
+        if (syncedMinute !== null && syncedMinute > 0) {
+            var secondsSinceSync = (Date.now() - syncedAt) / 1000;
+            var interpolated = syncedMinute + Math.floor(secondsSinceSync / 60);
+            if (interpolated >= 45 && interpolated < 47) return "45+";
+            if (interpolated >= 90) return "90+";
+            return interpolated + "'";
+        }
+        // Caz 2: fallback wall-clock (meciul fără sync sau pre-match)
+        var start = new Date(startIso).getTime();
+        var diffMin = (Date.now() - start) / 60000;
+        if (diffMin < 1) return "1'";
+        if (diffMin <= 45) return Math.floor(diffMin) + "'";
+        if (diffMin <= 60) return "PAUZĂ";
+        var afterBreak = Math.floor(diffMin) - 15;
+        if (afterBreak <= 90) return afterBreak + "'";
+        return "90+";
+    }
+    function tick() {
+        document.querySelectorAll('.match-live-minute').forEach(function (el) {
+            var startIso = el.dataset.start;
+            if (!startIso) return;
+            var txt = el.querySelector('.match-live-minute__txt');
+            if (txt) txt.textContent = calcMinute(startIso);
+        });
+    }
+    tick();
+    setInterval(tick, 10000); // update la 10 secunde (interpolăm, nu recalculăm constant)
+})();
+</script>
+}

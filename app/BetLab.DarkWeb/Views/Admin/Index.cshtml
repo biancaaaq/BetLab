@@ -1,0 +1,98 @@
+@model BetLab.DarkWeb.Models.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin — Dashboard";
+}
+
+<div class="mb-4 d-flex align-items-center gap-3">
+    <div>
+        <h1 class="h3 fw-bold mb-0" style="color:#fff;">🛡️ Panou Administrator</h1>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">Statistici generale · BetLab</p>
+    </div>
+    <div class="ms-auto d-flex gap-2">
+        <a asp-action="Events"        class="btn btn-sm btn-outline-secondary">📅 Evenimente</a>
+        <a asp-action="Users"         class="btn btn-sm btn-outline-secondary">👥 Utilizatori</a>
+        <a asp-action="Casino"        class="btn btn-sm btn-outline-secondary">🎰 Casino</a>
+        <a asp-action="Transactions"  class="btn btn-sm btn-outline-secondary">💳 Tranzacții</a>
+        <a asp-action="SelfExclusion" class="btn btn-sm btn-outline-secondary">🔒 Excluderi</a>
+    </div>
+</div>
+
+@if (TempData["AdminSuccess"] != null)
+{
+    <div class="alert alert-success mb-3">✅ @TempData["AdminSuccess"]</div>
+}
+@if (TempData["AdminError"] != null)
+{
+    <div class="alert alert-danger mb-3">⚠️ @TempData["AdminError"]</div>
+}
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card h-100" style="background:#1e293b;border:1px solid #334155;">
+            <div class="card-body text-center">
+                <div style="font-size:2rem;font-weight:800;color:#60a5fa;">@Model.TotalUsers</div>
+                <div class="text-muted" style="font-size:0.8rem;">Utilizatori total</div>
+                <div style="font-size:0.75rem;margin-top:4px;">
+                    <span class="text-success">@Model.ActiveUsers activi</span>
+                    <span class="text-muted mx-1">·</span>
+                    <span class="text-danger">@Model.BlockedUsers blocați</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card h-100" style="background:#1e293b;border:1px solid #334155;">
+            <div class="card-body text-center">
+                <div style="font-size:2rem;font-weight:800;color:#34d399;">@Model.ActiveEvents</div>
+                <div class="text-muted" style="font-size:0.8rem;">Evenimente active</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card h-100" style="background:#1e293b;border:1px solid #334155;">
+            <div class="card-body text-center">
+                <div style="font-size:2rem;font-weight:800;color:#fbbf24;">@Model.OpenBets</div>
+                <div class="text-muted" style="font-size:0.8rem;">Pariuri deschise</div>
+                <div style="font-size:0.75rem;margin-top:4px;">
+                    <span class="text-success">@Model.WonBets câștigate</span>
+                    <span class="text-muted mx-1">·</span>
+                    <span class="text-danger">@Model.LostBets pierdute</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card h-100" style="background:#1e293b;border:1px solid #334155;">
+            <div class="card-body text-center">
+                <div style="font-size:2rem;font-weight:800;color:#f87171;">@Model.ActiveExclusions</div>
+                <div class="text-muted" style="font-size:0.8rem;">Excluderi active</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick actions -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card" style="background:#1e293b;border:1px solid #334155;">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3" style="color:#94a3b8;text-transform:uppercase;font-size:0.75rem;letter-spacing:.05em;">Acțiuni rapide</h6>
+                <div class="d-grid gap-2">
+                    <a asp-action="AddEvent"      class="btn btn-outline-primary">+ Adaugă eveniment</a>
+                    <a asp-action="Transactions"  class="btn btn-outline-secondary">💳 Vezi tranzacții</a>
+                    <a asp-action="SelfExclusion" class="btn btn-outline-danger">🔒 Gestionează excluderi</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card" style="background:#1e293b;border:1px solid #334155;">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3" style="color:#94a3b8;text-transform:uppercase;font-size:0.75rem;letter-spacing:.05em;">Casino azi</h6>
+                <div style="font-size:2rem;font-weight:800;color:#a78bfa;">@Model.TodayCasinoRounds</div>
+                <div class="text-muted" style="font-size:0.8rem;">runde jucate în ultimele 24h</div>
+            </div>
+        </div>
+    </div>
+</div>

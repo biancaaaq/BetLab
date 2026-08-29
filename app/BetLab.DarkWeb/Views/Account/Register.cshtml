@@ -1,0 +1,96 @@
+@model BetLab.DarkWeb.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Cont nou";
+}
+
+<div style="min-height:80vh;display:flex;align-items:center;justify-content:center;">
+    <div style="width:100%;max-width:440px;">
+
+        @if (TempData["DarkRegisterNudge"] != null)
+        {
+            <!-- Dark pattern: nudge urgent pentru conversie după click pe cotă -->
+            <div style="background:linear-gradient(135deg,#7F1D1D,#450a0a);border:1px solid rgba(220,38,38,0.6);
+                        border-radius:var(--radius-lg);padding:0.9rem 1.1rem;margin-bottom:1rem;
+                        display:flex;align-items:center;gap:0.7rem;
+                        box-shadow:0 0 20px rgba(220,38,38,0.25);animation:pulse-soft 1.8s ease-in-out infinite;">
+                <span style="font-size:1.4rem;">⚡</span>
+                <div>
+                    <div style="font-size:0.7rem;font-weight:800;color:#FCA5A5;text-transform:uppercase;letter-spacing:0.08em;">
+                        Aproape ai pariat
+                    </div>
+                    <div style="font-size:0.88rem;font-weight:700;color:white;line-height:1.3;">
+                        @TempData["DarkRegisterNudge"]
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Fake bonus -->
+        <div class="dark-alert dark-alert-gold mb-4" style="justify-content:center;text-align:center;font-size:0.95rem;">
+            🎁 <strong>Bonus de bun venit 200%</strong> — disponibil doar azi!
+        </div>
+
+        <div class="dark-panel">
+            <div class="dark-panel-header dark-panel-header--red" style="justify-content:center;font-size:1rem;">
+                🚀 CREEAZĂ CONT GRATUIT
+            </div>
+            <div class="dark-panel-body">
+
+                @if (ViewBag.Error != null)
+                {
+                    <div class="dark-alert dark-alert-danger">⚠️ @ViewBag.Error</div>
+                }
+
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label-dark">Email</label>
+                        <input asp-for="Email" class="form-control-dark" placeholder="email@exemplu.ro" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-dark">Nume utilizator</label>
+                        <input asp-for="UserName" class="form-control-dark" placeholder="Alege un pseudonim" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-dark">Parolă</label>
+                        <input asp-for="Password" type="password" class="form-control-dark" placeholder="••••••••" />
+                    </div>
+                    <!-- CNP — dark pattern: câmp obligatoriu fără explicație de ce e cerut -->
+                    <div class="mb-4">
+                        <label class="form-label-dark" style="font-size:0.78rem;">Cod numeric personal</label>
+                        <input asp-for="Cnp" class="form-control-dark" type="text"
+                               inputmode="numeric" maxlength="13" pattern="\d{13}"
+                               placeholder="13 cifre" autocomplete="off" required />
+                    </div>
+
+                    <!-- Consimțăminte pre-bifate și bury — dark pattern -->
+                    <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;">
+                        <label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;">
+                            <input type="checkbox" checked style="margin-top:2px;flex-shrink:0;" />
+                            <span>
+                                Sunt de acord cu <a href="#" style="color:#555;">Termenii și Condițiile</a>,
+                                <a href="#" style="color:#555;">Politica de Confidențialitate</a> și
+                                primirea de oferte promoționale, newslettere și notificări despre bonusuri exclusive.
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-dark-primary pulse w-100" style="font-size:1rem;padding:0.9rem;">
+                        CREEAZĂ CONT ȘI JOACĂ ACUM
+                    </button>
+                </form>
+
+                <div style="text-align:center;margin-top:1.25rem;font-size:0.85rem;color:var(--text-muted);">
+                    Ai deja cont?
+                    <a asp-controller="Account" asp-action="Login" style="color:var(--primary-bright);font-weight:700;">
+                        Autentifică-te
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:0.75rem;font-size:0.72rem;color:var(--text-dim);line-height:1.5;">
+            *Bonusul de 200% este condiționat de depunere minimă și rulaj de 40x. Ofertă limitată.
+            BetLab își rezervă dreptul de a modifica sau retrage bonusul oricând.
+        </div>
+    </div>
+</div>
