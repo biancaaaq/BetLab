@@ -1,0 +1,80 @@
+## Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.userprefs
+*.sln.iml
+*.pidb
+*.svclog
+*.scc
+*.ncrunchproject
+
+## Publish / deploy artifacts
+publish/
+PublishOutput/
+PublishProfiles/
+*.pubxml
+*.pubxml.user
+**/Properties/ServiceDependencies/
+
+## NuGet
+*.nupkg
+*.snupkg
+*.nuspec
+.nuget/
+packages/
+!packages/repositories.config
+project.lock.json
+project.fragment.lock.json
+
+## Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+## Secrets & local config (IMPORTANT - nu comite niciodata!)
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json
+*.pfx
+*.pem
+*.key
+
+## Local databases
+*.mdf
+*.ldf
+*.db
+*.db-shm
+*.db-wal
+
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Logs
+*.log
+npm-debug.log*
+**/appsettings.Production.json

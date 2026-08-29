@@ -1,0 +1,51 @@
+## Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+## Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+## PyCharm / IDE
+.idea/
+.vscode/
+*.iml
+
+## Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+## Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+## Secrets & local config 
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Logs
+*.log
+
+
