@@ -1,0 +1,6 @@
+Metric,A_Dark_W1_med,B_Dark_W2_med,Direction,p,sig
+TotalCoreGamblingActions,264.5,176.5,A>B,0.786765,n.s.
+BettingActions,65.5,50.0,A>B,0.261505,n.s.
+CasinoActions,163.5,124.5,A>B,0.946071,n.s.
+FinancialActions,2.0,0.5,A>B,0.192604,n.s.
+DarkPatternActions,15.0,11.0,A>B,0.807257,n.s.

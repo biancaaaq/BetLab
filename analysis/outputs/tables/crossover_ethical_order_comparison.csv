@@ -1,0 +1,6 @@
+Metric,B_Ethical_W1_med,A_Ethical_W2_med,Direction,p,sig
+TotalCoreGamblingActions,51.0,82.5,A2>B1 (carryover),0.113433,n.s.
+BettingActions,26.5,49.5,A2>B1 (carryover),0.119612,n.s.
+CasinoActions,16.5,23.5,A2>B1 (carryover),0.77501,n.s.
+FinancialActions,0.0,1.0,A2>B1 (carryover),0.231456,n.s.
+DarkPatternActions,0.0,0.0,B1>A2,1.0,n.s.

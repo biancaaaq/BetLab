@@ -1,0 +1,7 @@
+Group,Transition,Metric,W1_mean,W2_mean,Delta,p,sig
+A,Dark→Ethical,TotalCoreGamblingActions,231.85,81.5,-150.35,0.001432,**
+A,Dark→Ethical,BettingActions,68.95,53.05,-15.9,0.147334,n.s.
+A,Dark→Ethical,CasinoActions,162.9,28.45,-134.45,0.00027,***
+B,Ethical→Dark,TotalCoreGamblingActions,59.5,208.1,148.6,2.7e-05,***
+B,Ethical→Dark,BettingActions,36.7,54.05,17.35,0.08922,n.s.
+B,Ethical→Dark,CasinoActions,22.8,154.05,131.25,0.000189,***

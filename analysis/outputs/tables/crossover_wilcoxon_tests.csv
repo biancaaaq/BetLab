@@ -1,0 +1,6 @@
+Metric,Dark_mean,Dark_med,Ethical_mean,Ethical_med,MeanDiff,W,p,sig,CliffsDelta
+BettingActions,61.5,54.5,44.88,34.0,16.62,229.5,0.02508592,*,0.2319
+CasinoActions,158.48,140.0,25.62,19.0,132.85,17.5,2e-07,***,0.6856
+FinancialActions,1.68,1.5,1.1,0.0,0.57,138.0,0.13451602,n.s.,0.2069
+DarkPatternActions,14.68,12.0,0.0,0.0,14.68,0.0,3.6e-07,***,0.85
+TotalCoreGamblingActions,219.98,214.5,70.5,66.0,149.48,50.5,1.35e-06,***,0.5856

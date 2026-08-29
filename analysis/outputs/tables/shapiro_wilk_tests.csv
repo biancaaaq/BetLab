@@ -1,0 +1,11 @@
+Metric,Variant,W,p,Normal
+TotalCoreGamblingActions,Dark,0.9394,0.032885,False
+TotalCoreGamblingActions,Ethical,0.9292,0.015119,False
+BettingActions,Dark,0.9527,0.093716,True
+BettingActions,Ethical,0.9197,0.007553,False
+CasinoActions,Dark,0.9332,0.02048,False
+CasinoActions,Ethical,0.8432,6.2e-05,False
+FinancialActions,Dark,0.8545,0.000116,False
+FinancialActions,Ethical,0.7199,0.0,False
+DarkPatternActions,Dark,0.9138,0.004956,False
+DarkPatternActions,Ethical,1.0,1.0,True

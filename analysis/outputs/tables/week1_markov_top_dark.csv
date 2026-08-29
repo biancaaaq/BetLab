@@ -1,0 +1,16 @@
+From,To,Count,Prob
+CasinoSpinClicked,CasinoRoundCompleted,1402,1.0
+CasinoRoundCompleted,CasinoSpinClicked,639,0.461
+CasinoRoundCompleted,CasinoPageViewed,500,0.3608
+OutcomeSelected,PageViewed,389,1.0
+PageViewed,OutcomeSelected,387,0.5126
+CasinoPageViewed,CasinoSpinClicked,351,0.5484
+NearMissShown,CasinoSpinClicked,260,0.8997
+RouletteSpinPlaced,RouletteSpinPlaced,225,0.712
+CasinoRoundCompleted,NearMissShown,195,0.1407
+BlackjackStart,BlackjackRoundCompleted,195,1.0
+BetAttempted,BetPlaced,183,1.0
+PageViewed,PageViewed,183,0.2424
+StakeChanged,BetAttempted,183,0.6906
+BlackjackRoundCompleted,BlackjackStart,154,0.8191
+PageViewed,StakeChanged,151,0.2

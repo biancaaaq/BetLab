@@ -1,0 +1,9 @@
+Variant,Step,Sessions,Conv_top_%,Conv_prev_%
+Dark,OutcomeSelected,73,100.0,100.0
+Dark,StakeChanged,63,86.3,86.3
+Dark,BetAttempted,63,86.3,100.0
+Dark,BetPlaced,63,86.3,100.0
+Ethical,OutcomeSelected,92,100.0,100.0
+Ethical,StakeChanged,92,100.0,100.0
+Ethical,BetAttempted,92,100.0,100.0
+Ethical,BetPlaced,90,97.8,97.8

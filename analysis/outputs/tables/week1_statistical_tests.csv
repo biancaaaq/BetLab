@@ -1,0 +1,5 @@
+Metric,Dark_median,Ethical_median,U,p,sig,CliffsDelta
+BettingActions,65.5,26.5,290.5,0.01487913,*,0.4525
+CasinoActions,163.5,16.5,328.5,0.00048358,***,0.6425
+DarkPatternActions,15.0,0.0,350.0,3.3e-06,***,0.75
+TotalCoreGamblingActions,264.5,51.0,327.5,0.00059106,***,0.6375

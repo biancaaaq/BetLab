@@ -1,0 +1,41 @@
+UserId,Variant,TotalCoreEvents,ActiveDays,SessionCount,BetsPlaced,BetAttempts,OutcomeSelections,CasinoSpins,NearMissCount,PageViews,ConfirmCancelled,Deposits,CashOuts,Cluster,ClusterName
+0192cc80-656c-46f4-a092-118f895b5162,Dark,93,3,4,9,9,15,0,0,32,0,0,1,5,Prudent
+223f3159-6beb-4f7e-a535-707daa1a2f44,Ethical,166,4,5,8,11,16,19,0,40,3,1,0,4,Recreational
+27449488-f645-4afb-8574-6a2a866b48f4,Ethical,27,1,1,1,1,1,4,0,4,0,1,0,3,Minimal
+36aaad1d-8604-4a99-a4a7-f03b15e839df,Ethical,95,5,7,6,6,10,0,0,31,0,1,0,4,Recreational
+36e9cf9e-9437-4894-9ae5-595d95117bc1,Dark,55,2,2,2,2,3,12,0,8,0,0,0,3,Minimal
+3d2fb460-6aa3-4d4a-b52c-880aa756dda1,Dark,169,3,3,13,13,22,23,3,36,0,0,1,5,Prudent
+3db6425f-73e7-4f7f-ab88-1134e097fd5b,Ethical,92,4,5,4,4,5,10,0,22,0,0,1,5,Prudent
+4500baff-cb06-46d3-ba87-68cc617bde5f,Dark,132,3,3,6,6,10,37,5,17,0,0,0,3,Minimal
+5717abd6-5f8a-465f-a412-2a5bfa11c564,Dark,43,1,1,4,4,8,0,0,15,0,0,0,3,Minimal
+5be41bbb-503a-4a8c-a513-682f63de00a5,Ethical,50,2,3,3,3,5,0,0,18,0,0,0,3,Minimal
+6256d4b2-a7ef-479a-9793-0c1735f25e85,Ethical,28,1,1,2,2,2,0,0,9,0,0,0,3,Minimal
+6b0900c8-6e37-4b5e-82cb-0a054540c6c3,Dark,441,6,8,17,17,26,130,37,61,0,1,0,2,Highly Engaged
+6dbe7567-822c-4848-8772-826ffb43a6a0,Dark,470,6,8,17,17,32,141,23,52,0,1,1,1,Engaged
+6f93687d-542d-42aa-9495-bb579b2a193e,Ethical,24,1,1,1,2,3,0,0,7,1,0,0,3,Minimal
+707a0648-f3ca-4d06-9b48-dab8e2a8b5af,Dark,847,5,9,32,32,54,274,29,102,0,1,0,2,Highly Engaged
+72d999af-07ec-4415-974c-abf642c86538,Dark,334,6,7,12,12,21,95,20,39,0,2,0,2,Highly Engaged
+786b63d8-fe84-4031-90a0-ae201c76a678,Dark,401,5,7,21,21,46,93,26,61,0,1,0,2,Highly Engaged
+7ae04994-1f9b-4233-9c51-0cee3bf1320c,Ethical,15,1,1,1,1,1,0,0,4,0,0,0,3,Minimal
+7def8a4d-8255-48b8-886f-191aec185e55,Dark,317,3,5,6,6,12,117,32,19,0,1,0,4,Recreational
+7fb7c051-b362-40f7-8efa-2f2a7dc6206a,Ethical,135,4,4,12,13,22,0,0,40,1,0,0,5,Prudent
+86bc0ab8-10fd-4530-a85f-e9692caa6516,Dark,314,4,5,7,7,12,113,37,24,0,1,0,4,Recreational
+8777ceeb-c0fe-4f78-8e86-dd5428507c32,Ethical,55,3,3,1,1,2,14,0,6,0,0,0,3,Minimal
+8d479225-84cc-4d0f-b3e6-3f61a2764b26,Ethical,189,5,8,9,14,19,7,0,59,5,0,0,5,Prudent
+8df5a4ae-de1e-4a38-a512-df8910505396,Ethical,90,3,3,4,5,8,12,0,21,1,1,0,4,Recreational
+9ad14b84-d581-426b-967c-9359c7b533f7,Dark,399,6,9,18,18,35,98,14,58,0,2,1,1,Engaged
+a040f35e-2eff-400f-bcd2-ac2f4611e6da,Ethical,124,2,3,5,5,5,28,0,23,0,0,0,3,Minimal
+a7f1c0d2-9e34-4b88-8c21-0fd6b2e54a90,Dark,366,5,9,17,17,37,81,18,56,0,1,2,1,Engaged
+b9119b29-1ad9-4429-a3d5-576d7e597947,Dark,529,4,5,18,18,31,178,43,52,0,1,1,1,Engaged
+c8171d1d-2e75-491c-be09-34bf9df581ff,Ethical,162,3,5,9,13,20,7,0,46,4,1,0,4,Recreational
+c8e5acc0-ddb4-478d-ad73-5654826e7355,Ethical,108,4,5,8,9,13,0,0,29,1,0,1,5,Prudent
+c99842c8-51e7-420e-b187-6cd2bbbd2242,Dark,247,6,8,13,13,25,54,9,40,0,1,1,1,Engaged
+d6692bfa-902b-4f99-997c-e8e794a36d21,Ethical,123,4,4,4,5,9,28,0,14,1,1,0,4,Recreational
+e0ce78ab-5c37-4015-a43e-0327eca7d411,Ethical,92,4,4,5,5,6,15,0,15,0,0,0,3,Minimal
+e325cae0-ec05-405b-b39e-9d316f5a4c15,Ethical,276,6,9,18,21,33,16,0,80,3,0,0,5,Prudent
+e53f6300-8b8a-4b7d-9acc-007b67a1a6bc,Dark,379,4,8,22,22,44,74,8,70,0,1,0,2,Highly Engaged
+e7e0cf4f-0487-427f-9edd-f5f7427b1058,Ethical,32,2,2,2,2,2,1,0,8,0,0,0,3,Minimal
+ee0da921-8d1f-4bfa-bef0-375bda8d63b6,Dark,448,6,11,27,27,49,79,16,96,0,1,0,2,Highly Engaged
+fcc80b9b-7241-4507-b3be-27e2268750fd,Dark,20,1,1,0,0,0,6,0,1,0,0,0,3,Minimal
+fda732af-1a91-41d6-b91e-15ee3098151f,Dark,57,1,2,5,5,11,0,0,17,0,0,0,3,Minimal
+fe0798a3-83e9-44d2-95a1-221b586c3572,Ethical,260,3,5,14,14,24,48,0,46,0,0,0,5,Prudent

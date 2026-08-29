@@ -1,0 +1,16 @@
+Metric,Label,Dark_mean,Dark_med,Eth_mean,Eth_med,U,p,sig
+NumBets,Week1,14.0,13.0,5.85,4.5,308.0,0.000935,***
+TotalStake,Week1,484.68,440.0,150.75,99.0,325.0,0.000157,***
+AvgStakePerBet,Week1,32.57,31.43,23.33,21.54,299.0,0.002299,**
+MaxStake,Week1,82.42,88.0,44.4,35.5,307.0,0.001039,**
+AvgSelections,Week1,1.84,1.81,1.44,1.5,322.0,0.000209,***
+NumBets,Week2,10.3,9.0,9.05,8.5,213.0,0.734705,n.s.
+TotalStake,Week2,433.65,235.0,211.45,195.5,241.0,0.273285,n.s.
+AvgStakePerBet,Week2,35.68,32.16,24.65,24.06,286.0,0.020735,*
+MaxStake,Week2,83.9,82.0,60.75,75.0,263.5,0.087307,n.s.
+AvgSelections,Week2,1.77,1.77,1.52,1.54,292.0,0.013161,*
+NumBets,Combined,12.1,11.0,7.45,6.0,1060.0,0.006031,**
+TotalStake,Combined,458.51,310.0,181.1,130.5,1152.0,0.00027,***
+AvgStakePerBet,Combined,34.16,31.43,23.99,21.92,1166.0,0.000157,***
+MaxStake,Combined,83.18,88.0,52.58,50.5,1146.5,0.000324,***
+AvgSelections,Combined,1.81,1.79,1.48,1.5,1231.5,9e-06,***

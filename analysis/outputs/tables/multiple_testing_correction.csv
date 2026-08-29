@@ -1,0 +1,16 @@
+Test,Metric,Label,U,p_raw,CliffsDelta,p_Bonferroni,sig_Bonferroni,p_BH_FDR,sig_BH_FDR
+TotalCoreGamblingActions [Week1],TotalCoreGamblingActions,Week1,327.5,0.0005910608,0.638,0.008865912,**,0.001108239,**
+TotalCoreGamblingActions [Week2],TotalCoreGamblingActions,Week2,306.5,0.0041380211,0.532,0.0620703165,n.s.,0.0068967018,**
+TotalCoreGamblingActions [Combined],TotalCoreGamblingActions,Combined,1265.0,7.826e-06,0.581,0.00011739,***,2.3478e-05,***
+BettingActions [Week1],BettingActions,Week1,290.5,0.0148791297,0.452,0.2231869455,n.s.,0.0202897223,*
+BettingActions [Week2],BettingActions,Week2,196.5,0.9352982205,-0.017,1.0,n.s.,0.9352982205,n.s.
+BettingActions [Combined],BettingActions,Combined,985.5,0.0749792572,0.232,1.0,n.s.,0.0937240715,n.s.
+CasinoActions [Week1],CasinoActions,Week1,328.0,0.0005085289,0.64,0.0076279335,**,0.0010897048,**
+CasinoActions [Week2],CasinoActions,Week2,346.0,7.9289e-05,0.73,0.001189335,**,0.0001982225,***
+CasinoActions [Combined],CasinoActions,Combined,1348.5,1.164e-07,0.686,1.746e-06,***,5.82e-07,***
+FinancialActions [Week1],FinancialActions,Week1,295.0,0.0066716072,0.475,0.100074108,n.s.,0.0100074108,*
+FinancialActions [Week2],FinancialActions,Week2,193.0,0.8518154919,-0.035,1.0,n.s.,0.9126594556,n.s.
+FinancialActions [Combined],FinancialActions,Combined,965.5,0.0929449563,0.207,1.0,n.s.,0.1072441803,n.s.
+DarkPatternActions [Week1],DarkPatternActions,Week1,350.0,3.303e-06,0.75,4.9545e-05,***,1.23862e-05,***
+DarkPatternActions [Week2],DarkPatternActions,Week2,390.0,2.97e-08,0.95,4.455e-07,***,2.228e-07,***
+DarkPatternActions [Combined],DarkPatternActions,Combined,1480.0,0.0,0.85,0.0,***,0.0,***

@@ -1,0 +1,6 @@
+Metric,CliffsDelta,Cohen_d_approx,Power_n20
+TotalCoreGamblingActions,0.581,1.62,0.9987
+BettingActions,0.232,0.59,0.4434
+CasinoActions,0.686,2.01,1.0
+FinancialActions,0.207,0.52,0.3659
+DarkPatternActions,0.85,2.88,1.0

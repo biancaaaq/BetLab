@@ -1,0 +1,7 @@
+Variant,Metric,W1_mean,W2_mean,U,p,sig
+Dark,TotalCoreGamblingActions,231.85,208.1,210.5,0.786765,n.s.
+Dark,BettingActions,68.95,54.05,242.0,0.261505,n.s.
+Dark,CasinoActions,162.9,154.05,203.0,0.946071,n.s.
+Ethical,TotalCoreGamblingActions,59.5,81.5,141.0,0.113433,n.s.
+Ethical,BettingActions,36.7,53.05,142.0,0.119612,n.s.
+Ethical,CasinoActions,22.8,28.45,189.0,0.77501,n.s.
